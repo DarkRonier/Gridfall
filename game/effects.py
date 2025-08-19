@@ -69,7 +69,8 @@ class MeleeAttackAnimation:
         return self.current_pos
 
 class ProjectileAnimation:
-    def __init__(self, start_pos_px, end_pos_px, duration_frames, callback_dano):
+    def __init__(self, atacante, start_pos_px, end_pos_px, duration_frames, callback_dano):
+        self.entidad = atacante
         self.start_pos = pygame.Vector2(start_pos_px)
         self.end_pos = pygame.Vector2(end_pos_px)
         self.duration = duration_frames

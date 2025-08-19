@@ -45,6 +45,8 @@ PANEL_CONFIRMACION_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 250, ALTO_VENTANA / 2 
 BOTON_CONFIRMAR_SI_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 150, ALTO_VENTANA / 2 + 20, 120, 50)
 BOTON_CONFIRMAR_NO_RECT = pygame.Rect(ANCHO_VENTANA / 2 + 30, ALTO_VENTANA / 2 + 20, 120, 50)
 
+COLOR_RESALTADO_ACTIVO = (240, 240, 160, 250)
+
 # Rectángulo para el borde del turno. Es 10px más grande que el tablero en cada lado.
 GROSOR_BORDE = 7
 TABLERO_RECT = pygame.Rect(0, UI_ALTO, ANCHO_TABLERO, ALTO_TABLERO)

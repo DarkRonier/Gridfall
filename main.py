@@ -37,7 +37,6 @@ turn_manager = None
 pieza_activa = None
 movimientos_resaltados = []
 ataques_resaltados = []
-proyectiles_activos = []
 ganador = None
 numeros_flotantes = []
 animacion_en_curso = None
@@ -82,7 +81,7 @@ while True:
                     else:
                         finalizar_turno()
 
-                elif isinstance(animacion_en_curso, MeleeAttackAnimation):
+                elif isinstance(animacion_en_curso, (MeleeAttackAnimation, ProjectileAnimation)):
                     if entidad_ended.tipo_turno == 2 and not entidad_ended.ha_movido:
                         movimientos_resaltados = calcular_casillas_posibles(entidad_ended, tablero)
                         if not movimientos_resaltados:
@@ -95,9 +94,6 @@ while True:
         for animacion in list(animaciones_muerte):
             if animacion.update():
                 animaciones_muerte.remove(animacion)
-        for proyectil in list(proyectiles_activos):
-            if proyectil.update():
-                proyectiles_activos.remove(proyectil)
         for numero in numeros_flotantes:
             numero.update()
         numeros_flotantes = [n for n in numeros_flotantes if n.lifetime > 0]
@@ -178,10 +174,7 @@ while True:
                         if pieza_activa.tipo_ataque == 'melee':
                             animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
                         elif pieza_activa.tipo_ataque == 'ranged':
-                            nuevo_proyectil = ProjectileAnimation(start_px, target_px, 40, aplicar_dano_callback)
-                            proyectiles_activos.append(nuevo_proyectil)
-                            if pieza_activa.tipo_turno < 2:
-                                finalizar_turno()
+                            animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
                 
                 elif (fila_clic, col_clic) in movimientos_resaltados:
                     if not pieza_activa.ha_movido:
@@ -208,7 +201,7 @@ while True:
         dibujar_borde_turno(pantalla, pieza_activa)
         # La función de dibujado ahora necesita ambas listas de resaltados
         if pieza_activa or animacion_en_curso:
-            dibujar_resaltados(pantalla, movimientos_resaltados, ataques_resaltados)
+            dibujar_resaltados(pantalla, movimientos_resaltados, ataques_resaltados, pieza_activa)
         dibujar_piezas(pantalla, tablero, pieza_activa, CACHE_IMAGENES, fuente_hp, animacion_en_curso)
         
         if animacion_en_curso:
@@ -230,7 +223,6 @@ while True:
             rect_imagen = imagen_draw.get_rect(center=(centro_x, centro_y))
             pantalla.blit(imagen_draw, rect_imagen)
 
-        dibujar_proyectiles(pantalla, proyectiles_activos)
         dibujar_numeros_flotantes(pantalla, numeros_flotantes)
         pygame.display.flip()
         reloj.tick(FPS)

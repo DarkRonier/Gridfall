@@ -3,6 +3,7 @@
 import pygame
 from .constants import *
 from .assets import crear_superficie_pieza
+from game.effects import MeleeAttackAnimation, ProjectileAnimation, MoveAnimation
 
 def dibujar_tablero(pantalla):
     """Dibuja las casillas del tablero."""
@@ -19,8 +20,9 @@ def dibujar_piezas(pantalla, tablero, pieza_activa, cache_imagenes, fuente_hp, a
         for col in range(COLUMNAS):
             pieza = tablero[fila][col]
             if pieza is not None:
-                if animacion_activa and pieza is animacion_activa.entidad:
-                    continue
+                if animacion_activa and isinstance(animacion_activa, (MoveAnimation, MeleeAttackAnimation)):
+                    if pieza is animacion_activa.entidad:
+                        continue
 
                 if pieza is pieza_activa:
                     color = COLOR_J1_VIBRANTE if pieza.jugador == 1 else COLOR_J2_VIBRANTE
@@ -73,8 +75,13 @@ def dibujar_piezas(pantalla, tablero, pieza_activa, cache_imagenes, fuente_hp, a
 
                 pantalla.blit(texto_hp, rect_texto_hp)
 
-def dibujar_resaltados(pantalla, casillas_movimiento, casillas_ataque):
-    """Dibuja resaltados para movimiento (verde) y ataque (rojo)."""
+def dibujar_resaltados(pantalla, casillas_movimiento, casillas_ataque, pieza_activa):
+    if pieza_activa:
+        activo_surface = pygame.Surface((TAMANO_CASILLA, TAMANO_CASILLA), pygame.SRCALPHA)
+        activo_surface.fill(COLOR_RESALTADO_ACTIVO)
+        fila, col = pieza_activa.posicion
+        pantalla.blit(activo_surface, (col * TAMANO_CASILLA, fila * TAMANO_CASILLA + UI_ALTO))
+        
     mov_surface = pygame.Surface((TAMANO_CASILLA, TAMANO_CASILLA), pygame.SRCALPHA)
     mov_surface.fill((100, 255, 100, 100))
     for fila, col in casillas_movimiento:
@@ -123,14 +130,16 @@ def dibujar_numeros_flotantes(pantalla, numeros):
 
 def dibujar_animacion_activa(pantalla, animacion, cache_imagenes):
     """Dibuja la pieza que está en medio de una animación de movimiento."""
-    entidad = animacion.entidad
-    color = COLOR_J1_VIBRANTE if entidad.jugador == 1 else COLOR_J2_VIBRANTE
-    tamano_pieza = (int(TAMANO_CASILLA * 0.7), int(TAMANO_CASILLA * 0.7))
-
-    imagen_pieza = crear_superficie_pieza(entidad.nombre, color, tamano_pieza, cache_imagenes)
-    pos_actual = animacion.get_pos()
-    rect_imagen = imagen_pieza.get_rect(center=pos_actual)
-    pantalla.blit(imagen_pieza, rect_imagen)
+    if isinstance(animacion, (MoveAnimation, MeleeAttackAnimation)):
+        entidad = animacion.entidad
+        color = COLOR_J1_VIBRANTE if entidad.jugador == 1 else COLOR_J2_VIBRANTE
+        tamano_pieza = (int(TAMANO_CASILLA * 0.7), int(TAMANO_CASILLA * 0.7))
+        imagen_pieza = crear_superficie_pieza(entidad.nombre, color, tamano_pieza, cache_imagenes)
+        pos_actual = animacion.get_pos()
+        rect_imagen = imagen_pieza.get_rect(center=pos_actual)
+        pantalla.blit(imagen_pieza, rect_imagen)
+    elif isinstance(animacion, ProjectileAnimation):
+        animacion.draw(pantalla)
 
 def dibujar_pantalla_confirmacion(pantalla, fondo_blur, fuente_menu, fuente_ui):
     """Dibuja la pantalla de confirmación sobre un fondo desenfocado."""

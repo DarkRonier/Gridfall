@@ -15,6 +15,8 @@ class TurnManager:
                     pieza.calcular_siguiente_turno(0)
     
     def avanzar_reloj_y_obtener_pieza(self):
+        self.piezas_en_juego = [p for p in self.piezas_en_juego if p.esta_viva()]
+
         self.reloj += 1
         piezas_con_turno = []
         for pieza in self.piezas_en_juego:
