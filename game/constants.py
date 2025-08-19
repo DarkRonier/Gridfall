@@ -1,0 +1,52 @@
+# ChessLike/game/constants.py
+import pygame
+
+# --- DIMENSIONES Y VENTANA ---
+UI_ALTO = 60
+ANCHO_TABLERO, ALTO_TABLERO = 720, 720
+FILAS, COLUMNAS = 8, 8
+TAMANO_CASILLA = ANCHO_TABLERO // COLUMNAS
+
+ANCHO_VENTANA = ANCHO_TABLERO
+ALTO_VENTANA = ALTO_TABLERO + UI_ALTO
+
+NOMBRE_VENTANA = "ChessLike Game"
+FPS = 60
+
+# --- COLORES ---
+GRIS_CLARO = (230, 230, 230)
+GRIS_OSCURO = (150, 150, 150)
+COLOR_FONDO = (30, 30, 30)
+
+COLOR_J1_OPACO = (60, 60, 180)
+COLOR_J1_VIBRANTE = (80, 120, 255)
+COLOR_J2_OPACO = (180, 60, 60)
+COLOR_J2_VIBRANTE = (255, 80, 80)
+
+COLOR_HP_FONDO = (70, 80, 70) # Gris verdoso oscuro
+COLOR_HP_ALTA = (40, 170, 90)  # Verde
+COLOR_HP_MEDIA = (255, 215, 0) # Amarillo
+COLOR_HP_BAJA = (255, 60, 30)   # Rojo
+
+# --- ESTADOS DE CASILLA (PARA LA VISUALIZACIÓN) ---
+# Estos ya no representan la lógica principal, sino cómo se dibuja
+# una casilla al ser marcada como accesible, por ejemplo.
+VACIA = 0
+ACCESIBLE = 1
+BAJO_ATAQUE = 2
+
+
+# --- UI ---
+BOTON_VOLVER_RECT = pygame.Rect(10, 10, 100, 40)
+BOTON_PASAR_RECT = pygame.Rect(ANCHO_VENTANA - 60, 10, 50, 40)
+# Rectángulo para el panel de confirmación
+PANEL_CONFIRMACION_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 250, ALTO_VENTANA / 2 - 100, 500, 200)
+# Botones dentro del panel de confirmación
+BOTON_CONFIRMAR_SI_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 150, ALTO_VENTANA / 2 + 20, 120, 50)
+BOTON_CONFIRMAR_NO_RECT = pygame.Rect(ANCHO_VENTANA / 2 + 30, ALTO_VENTANA / 2 + 20, 120, 50)
+
+# Rectángulo para el borde del turno. Es 10px más grande que el tablero en cada lado.
+GROSOR_BORDE = 7
+TABLERO_RECT = pygame.Rect(0, UI_ALTO, ANCHO_TABLERO, ALTO_TABLERO)
+BORDE_RECT = TABLERO_RECT.inflate(GROSOR_BORDE, GROSOR_BORDE)
+COLOR_BORDE_NEUTRO = (40, 40, 40) 
