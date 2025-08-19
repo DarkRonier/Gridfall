@@ -8,6 +8,34 @@ def es_valida(fila, col):
     """Comprueba si una coordenada está dentro del tablero."""
     return 0 <= fila < FILAS and 0 <= col < COLUMNAS
 
+def _buscar_pasos(pieza, n, tablero, is_attack=False):
+    if n == 0:
+        return set()
+    
+    fila_origen, col_origen = pieza.posicion
+    casillas_inrange = set()
+    cola = [((fila_origen, col_origen), 0)]
+    visitados = {(fila_origen, col_origen)}
+
+    while cola:
+        (f, c), pasos = cola.pop(0)
+        if pasos >= n:
+            continue
+        for df, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nf, nc = f + df, c + dc
+            if es_valida(nf, nc) and (nf, nc) not in visitados:
+                visitados.add((nf, nc))
+                casillas_inrange.add((nf, nc))
+
+                pieza_en_casilla = tablero[nf][nc]
+
+                if pieza_en_casilla is None:  # Si la casilla está vacía, seguimos explorando.
+                    cola.append(((nf, nc), pasos + 1))
+                elif is_attack and pieza_en_casilla.jugador == pieza.jugador:
+                    cola.append(((nf, nc), pasos + 1))  # Si es un ataque, seguimos si es aliado.                    
+    return casillas_inrange
+
+
 def calcular_mov_rect(pieza, n, tablero, is_attack=False):
     """
     Calcula el movimiento rectilíneo.
@@ -80,26 +108,21 @@ def calcular_mov_allsides(pieza, n, tablero, is_attack=False):
     diagonales = set(calcular_mov_diag(pieza, n, tablero, is_attack))
     return list(rectas.union(diagonales))
     
-def calcular_mov_steps(fila_origen, col_origen, n, tablero):
-    casillas_accesibles = set()
-    cola = [((fila_origen, col_origen), 0)]
-    visitados = {(fila_origen, col_origen)}
+def calcular_mov_steps(pieza, n, tablero):
+    casillas_accesibles = _buscar_pasos(pieza, n, tablero, is_attack=False)
+    movimientos_validos = set()
+    for f, c in casillas_accesibles:
+        if tablero[f][c] is None:
+            movimientos_validos.add((f, c))
+    return list(movimientos_validos)
 
-    while cola:
-        (f, c), pasos = cola.pop(0)
-        
-        if pasos >= n:
-            continue
-        
-        for df, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            nf, nc = f + df, c + dc
-            if es_valida(nf, nc) and (nf, nc) not in visitados:
-                if tablero[nf][nc] is None:
-                    visitados.add((nf, nc))
-                    casillas_accesibles.add((nf, nc))
-                    cola.append(((nf, nc), pasos + 1))
-
-    return list(casillas_accesibles)
+def calcular_ran_steps(pieza, a, b, tablero):
+    zona_maxima = _buscar_pasos(pieza, b, tablero, is_attack=True)
+    if a <= 0:
+        return zona_maxima
+    zona_muerta = _buscar_pasos(pieza, a, tablero, is_attack=True)
+    zona_valida = zona_maxima - zona_muerta
+    return list(zona_valida)
 
 def calcular_casillas_posibles(pieza, tablero):
     casillas_en_rango = set()
@@ -113,8 +136,7 @@ def calcular_casillas_posibles(pieza, tablero):
         elif tipo_mov == 'allsides':
             casillas_calculadas = calcular_mov_allsides(pieza, valor_mov, tablero)
         elif tipo_mov == 'steps':
-            fila_origen, col_origen = pieza.posicion
-            casillas_calculadas = calcular_mov_steps(fila_origen, col_origen, valor_mov, tablero)
+            casillas_calculadas = calcular_mov_steps(pieza, valor_mov, tablero)
 
         casillas_en_rango.update(casillas_calculadas)
     
@@ -140,6 +162,9 @@ def calcular_ataques_posibles(pieza, tablero):
             casillas_calculadas = calcular_mov_diag(pieza, valor_ran, tablero, is_attack=True)
         elif tipo_ran == 'allsides':
             casillas_calculadas = calcular_mov_allsides(pieza, valor_ran, tablero, is_attack=True)
+        elif tipo_ran == 'steps':
+            min_ran, max_ran = valor_ran
+            casillas_calculadas = calcular_ran_steps(pieza, min_ran, max_ran, tablero)
         
         casillas_en_rango.update(casillas_calculadas)
 
