@@ -60,7 +60,7 @@ def crear_soldado(jugador):
 
 def crear_paladin(jugador):
     return Pieza(
-        nombre="Paladin", jugador=jugador, hp=30, atk=5, agi=5.5,
+        nombre="Paladin", jugador=jugador, hp=30, atk=5, agi=5.4,
         movimientos=[('rect', 4), ('diag', 3)],
         rango_ataque=[('rect', 1)],
         tipo_turno=1,
@@ -70,7 +70,7 @@ def crear_paladin(jugador):
 
 def crear_mago(jugador):
     return Pieza(
-        nombre="Mago", jugador=jugador, hp=12, atk=6, agi=5,
+        nombre="Mago", jugador=jugador, hp=12, atk=6, agi=5.1,
         movimientos=[('steps', 2)],
         rango_ataque=[('steps', (0, 3))],
         tipo_turno=1,
@@ -80,7 +80,7 @@ def crear_mago(jugador):
 
 def crear_dragon(jugador):
     return Pieza(
-        nombre="Dragon", jugador=jugador, hp=40, atk=7, agi=4,
+        nombre="Dragon", jugador=jugador, hp=40, atk=7, agi=4.5,
         movimientos=[('allsides', 2)],
         rango_ataque=[('steps', (0, 3))],
         tipo_turno=1,
@@ -90,7 +90,7 @@ def crear_dragon(jugador):
 
 def crear_destructor(jugador):
     return Pieza(
-        nombre="Destructor", jugador=jugador, hp=50, atk=10, agi=4.5,
+        nombre="Destructor", jugador=jugador, hp=50, atk=10, agi=4.8,
         movimientos=[('allsides', 1)],
         rango_ataque=[('allsides', 1)],
         tipo_turno=1,

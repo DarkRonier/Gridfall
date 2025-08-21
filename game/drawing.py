@@ -102,9 +102,14 @@ def dibujar_ui(pantalla, fuente, pieza_activa):
 
     # Boton Volver
     pygame.draw.rect(pantalla, (180, 50, 50), BOTON_VOLVER_RECT, border_radius=5)
-    texto_volver = fuente.render("Volver", True, (255, 255, 255))
+    texto_volver = fuente.render("Salir", True, (255, 255, 255))
     pantalla.blit(texto_volver, texto_volver.get_rect(center=BOTON_VOLVER_RECT.center))
 
+    # Botón Deshacer
+    pygame.draw.rect(pantalla, (90, 90, 90), BOTON_DESHACER_RECT, border_radius=5)
+    texto_deshacer = fuente.render("<-", True, (255, 255, 255))
+    pantalla.blit(texto_deshacer, texto_deshacer.get_rect(center=BOTON_DESHACER_RECT.center))
+    
     # Botón de Pasar Turno
     pygame.draw.rect(pantalla, (90, 90, 90), BOTON_PASAR_RECT, border_radius=5)
     texto_pasar = fuente.render(">|", True, (255, 255, 255))
