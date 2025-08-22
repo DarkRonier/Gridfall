@@ -1,4 +1,3 @@
-# ChessLike/game/constants.py
 import pygame
 
 # --- DIMENSIONES Y VENTANA ---

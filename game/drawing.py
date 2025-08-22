@@ -1,5 +1,3 @@
-# ChessLike/game/drawing.py
-
 import pygame
 from .constants import *
 from .assets import crear_superficie_pieza

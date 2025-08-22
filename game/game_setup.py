@@ -1,4 +1,3 @@
-# ChessLike/game/game_setup.py
 import random
 
 from .piece import (crear_soldado, crear_paladin, crear_mago,

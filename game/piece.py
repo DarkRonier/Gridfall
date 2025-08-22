@@ -1,5 +1,3 @@
-# ChessLike/game/piece.py
-
 class Pieza:
     """
     Versión actualizada para manejar múltiples reglas de movimiento y ataque.

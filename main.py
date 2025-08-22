@@ -1,5 +1,3 @@
-# ChessLike/main.py
-
 import copy
 import pygame
 import sys
@@ -175,20 +173,20 @@ while True:
                                 # Esta función se ejecutará a mitad de la animación
                                 print(f"{pieza_activa.nombre} impacta a {pieza_atacada.nombre}.")
                                 pieza_atacada.recibir_dano(pieza_activa.atk)
+
                                 centro_x = col_clic * TAMANO_CASILLA + TAMANO_CASILLA / 2
                                 centro_y = fila_clic * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2
-                                
-                                # Creamos el número de daño flotante
                                 pos_damage = (centro_x, centro_y + (0.05 * TAMANO_CASILLA))
                                 nuevo_numero = DamageText(pieza_activa.atk, pos_damage, fuente_damage)
                                 numeros_flotantes.append(nuevo_numero)
 
                                 # Comprobamos si la pieza murió
                                 if not pieza_atacada.esta_viva():
-                                    turn_manager.piezas_en_juego.remove(pieza_atacada)
-                                    nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
-                                    animaciones_muerte.append(nueva_anim_muerte)
-                                    tablero[fila_clic][col_clic] = None
+                                    if pieza_atacada in turn_manager.piezas_en_juego:
+                                        turn_manager.piezas_en_juego.remove(pieza_atacada)
+                                        nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
+                                        animaciones_muerte.append(nueva_anim_muerte)
+                                        tablero[fila_clic][col_clic] = None
 
                             pieza_activa.ha_atacado = True
                             ataques_resaltados = []

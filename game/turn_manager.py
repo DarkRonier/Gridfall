@@ -1,5 +1,3 @@
-# ChessLike/game/turn_manager.py
-
 import random
 
 class TurnManager:
