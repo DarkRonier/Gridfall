@@ -1,5 +1,3 @@
-# ChessLike/game/logic.py
-
 from .constants import FILAS, COLUMNAS # Importación relativa
 
 # --- FUNCIONES DE CÁLCULO DE MOVIMIENTO ---

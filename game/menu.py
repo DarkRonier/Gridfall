@@ -1,5 +1,3 @@
-# ChessLike/game/menu.py
-
 import pygame
 from .constants import *
 
@@ -14,7 +12,7 @@ def mostrar_menu(pantalla, fuente_grande):
         pantalla.fill(COLOR_FONDO)
         
         # Título
-        texto_titulo = fuente_grande.render("ChessLike", True, (255, 255, 255))
+        texto_titulo = fuente_grande.render("GridFall", True, (255, 255, 255))
         rect_titulo = texto_titulo.get_rect(center=(ANCHO_VENTANA/2, ALTO_VENTANA/4))
         pantalla.blit(texto_titulo, rect_titulo)
 
