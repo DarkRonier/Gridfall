@@ -68,10 +68,10 @@ def crear_paladin(jugador):
 
 def crear_mago(jugador):
     return Pieza(
-        nombre="Mago", jugador=jugador, hp=12, atk=6, agi=5.1,
-        movimientos=[('steps', 2)],
-        rango_ataque=[('steps', (0, 3))],
-        tipo_turno=1,
+        nombre="Mago", jugador=jugador, hp=15, atk=7, agi=5.1,
+        movimientos=[('allsides', 2)],
+        rango_ataque=[('steps', (0, 4))],
+        tipo_turno=0,
         tipo_ataque='ranged',
         puede_saltar=False
     )
