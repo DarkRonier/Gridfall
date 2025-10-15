@@ -12,6 +12,8 @@ def cargar_svgs():
         SVGS_CARGADOS['Soldado'] = pygame.image.load('assets/soldier.svg')
         SVGS_CARGADOS['Paladin'] = pygame.image.load('assets/paladin.svg')
         SVGS_CARGADOS['Mago'] = pygame.image.load('assets/mago.svg')
+        SVGS_CARGADOS['Dragon'] = pygame.image.load('assets/dragon.svg')
+        SVGS_CARGADOS['Destructor'] = pygame.image.load('assets/destructor.svg')
         print("Archivos SVG cargados y convertidos a superficies correctamente.")
     except pygame.error as e:
         print(f"Error al cargar un archivo SVG. Asegúrate de que están en la carpeta 'assets' y son válidos.\n{e}")

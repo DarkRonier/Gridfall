@@ -1,16 +1,15 @@
-# ChessLike/game/constants.py
 import pygame
 
 # --- DIMENSIONES Y VENTANA ---
 UI_ALTO = 60
-ANCHO_TABLERO, ALTO_TABLERO = 720, 720
-FILAS, COLUMNAS = 8, 8
+ANCHO_TABLERO, ALTO_TABLERO = 720, 810
+FILAS, COLUMNAS = 9, 8
 TAMANO_CASILLA = ANCHO_TABLERO // COLUMNAS
 
 ANCHO_VENTANA = ANCHO_TABLERO
 ALTO_VENTANA = ALTO_TABLERO + UI_ALTO
 
-NOMBRE_VENTANA = "ChessLike Game"
+NOMBRE_VENTANA = "Gridfall"
 FPS = 60
 
 # --- COLORES ---
@@ -39,6 +38,7 @@ BAJO_ATAQUE = 2
 # --- UI ---
 BOTON_VOLVER_RECT = pygame.Rect(10, 10, 100, 40)
 BOTON_PASAR_RECT = pygame.Rect(ANCHO_VENTANA - 60, 10, 50, 40)
+BOTON_DESHACER_RECT = pygame.Rect(ANCHO_VENTANA - 120, 10, 50, 40)
 # Rectángulo para el panel de confirmación
 PANEL_CONFIRMACION_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 250, ALTO_VENTANA / 2 - 100, 500, 200)
 # Botones dentro del panel de confirmación
