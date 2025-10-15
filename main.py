@@ -13,12 +13,16 @@ from game.logic import calcular_casillas_posibles, calcular_ataques_posibles, ve
 from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
                           FadeOutAnimation, ProjectileAnimation)
 from game.piece import Pieza
+from game.audio import init_audio, get_audio
 
 # --- INICIALIZACIÓN DE PYGAME Y FUENTES ---
 pygame.init()
 if not cargar_svgs():
     pygame.quit()
     sys.exit()
+
+audio = init_audio() # Inicializar sistema de audio
+audio.play_game_start()
 
 pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
 pygame.display.set_caption(NOMBRE_VENTANA)
@@ -172,6 +176,9 @@ while True:
                             def aplicar_dano_callback():
                                 # Esta función se ejecutará a mitad de la animación
                                 print(f"{pieza_activa.nombre} impacta a {pieza_atacada.nombre}.")
+                                if pieza_activa.tipo_ataque == 'ranged':
+                                    audio.play_ranged_impact()
+
                                 pieza_atacada.recibir_dano(pieza_activa.atk)
 
                                 centro_x = col_clic * TAMANO_CASILLA + TAMANO_CASILLA / 2
@@ -182,6 +189,7 @@ while True:
 
                                 # Comprobamos si la pieza murió
                                 if not pieza_atacada.esta_viva():
+                                    audio.play_death()
                                     if pieza_atacada in turn_manager.piezas_en_juego:
                                         turn_manager.piezas_en_juego.remove(pieza_atacada)
                                         nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
@@ -200,8 +208,11 @@ while True:
                             
                             if pieza_activa.tipo_ataque == 'melee':
                                 animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
+                                audio.play_melee_attack()
+
                             elif pieza_activa.tipo_ataque == 'ranged':
                                 animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
+                                audio.play_ranged_cast()
                     
                     elif (fila_clic, col_clic) in movimientos_resaltados:
                         if not pieza_activa.ha_movido:
@@ -213,6 +224,8 @@ while True:
                                     fila_clic * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
                             
                             animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
+
+                            audio.play_move()
 
                             # Actualizamos el tablero y la posición de la pieza
                             tablero[vieja_fila][vieja_col] = None
@@ -267,6 +280,10 @@ while True:
                     estado_juego = 'en_juego'
     
     elif estado_juego == 'fin_del_juego':
+        if not hasattr(audio, '_victoria_sonada'):
+            audio.play_victory()
+            audio._victoria_sonada = True
+
         # Pantalla de fin de juego
         texto_fin = fuente_menu.render(f"¡El Jugador {ganador} ha ganado!", True, (255, 215, 0))
         texto_instr = fuente_ui.render("Pulsa cualquier tecla para volver al menú", True, (255, 255, 255))
@@ -282,6 +299,8 @@ while True:
             if evento.type == pygame.QUIT:
                 estado_juego = 'saliendo'
             if evento.type == pygame.KEYDOWN:
+                if hasattr(audio, '_victoria_sonada'):
+                    delattr(audio, '_victoria_sonada')
                 estado_juego = 'menu_principal'
 
     elif estado_juego == 'saliendo':
