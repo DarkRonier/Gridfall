@@ -1,10 +1,10 @@
 import pygame
+import sys
+import os
 from .constants import *
 from .piece import crear_soldado, crear_paladin, crear_mago, crear_dragon, crear_destructor
 from .assets import crear_superficie_pieza
 from .logic import calcular_casillas_posibles, calcular_ataques_posibles
-
-import os
 
 # Cache global para iconos
 CACHE_ICONOS = {}
@@ -25,7 +25,19 @@ def cargar_icono_svg(nombre_archivo, tamano=(24, 24)):
         return CACHE_ICONOS[cache_key]
     
     try:
-        ruta = os.path.join("assets", "icons", nombre_archivo)
+        # CRÍTICO: Detectar ruta base correctamente
+        if getattr(sys, 'frozen', False):
+            # Corriendo como .exe empaquetado
+            base_path = sys._MEIPASS
+        else:
+            # Corriendo como script - ir a la raíz del proyecto
+            # Este archivo está en game/tutorial.py, así que subimos 1 nivel
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # La ruta completa será: [raíz]/assets/icons/[archivo]
+        ruta = os.path.join(base_path, "assets", "icons", nombre_archivo)
+        
+        print(f"Intentando cargar icono: {ruta}")
         
         # Cargar SVG
         superficie_svg = pygame.image.load(ruta)
@@ -34,10 +46,15 @@ def cargar_icono_svg(nombre_archivo, tamano=(24, 24)):
         superficie_escalada = pygame.transform.smoothscale(superficie_svg, tamano)
         
         CACHE_ICONOS[cache_key] = superficie_escalada
+        print(f"Icono cargado: {nombre_archivo}")
         return superficie_escalada
         
     except Exception as e:
         print(f"Error al cargar icono {nombre_archivo}: {e}")
+        try:
+            print(f"  Ruta buscada: {ruta}")
+        except:
+            pass
         # Crear un cuadrado de color como fallback
         superficie = pygame.Surface(tamano, pygame.SRCALPHA)
         superficie.fill((100, 100, 100, 200))

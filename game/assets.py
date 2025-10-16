@@ -1,5 +1,7 @@
 # game/assets.py
 
+import sys
+import os
 import pygame
 import io
 
@@ -7,17 +9,38 @@ import io
 SVGS_CARGADOS = {}
 
 def cargar_svgs():
-    try:
-        # Cargamos directamente la imagen. Pygame la tratará como un sprite negro sobre fondo transparente.
-        SVGS_CARGADOS['Soldado'] = pygame.image.load('assets/soldier.svg')
-        SVGS_CARGADOS['Paladin'] = pygame.image.load('assets/paladin.svg')
-        SVGS_CARGADOS['Mago'] = pygame.image.load('assets/mago.svg')
-        SVGS_CARGADOS['Dragon'] = pygame.image.load('assets/dragon.svg')
-        SVGS_CARGADOS['Destructor'] = pygame.image.load('assets/destructor.svg')
-        print("Archivos SVG cargados y convertidos a superficies correctamente.")
-    except pygame.error as e:
-        print(f"Error al cargar un archivo SVG. Asegúrate de que están en la carpeta 'assets' y son válidos.\n{e}")
-        return False
+    """Carga todos los SVG de las piezas."""
+    # CRÍTICO: Detectar si estamos en .exe empaquetado
+    if getattr(sys, 'frozen', False):
+        # Corriendo como .exe - PyInstaller extrae a carpeta temporal
+        base_path = sys._MEIPASS
+    else:
+        # Corriendo como script - usar carpeta del proyecto
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Ruta a la carpeta assets/pieces (CON "pieces" ahora)
+    ruta_assets = os.path.join(base_path, "assets", "pieces")  # ← CAMBIO AQUÍ
+    
+    # Mapeo de nombres (ajusta según tu código)
+    mapeo_piezas = {
+        "Soldado": "soldier",
+        "Paladin": "paladin", 
+        "Mago": "mago",
+        "Dragon": "dragon",
+        "Destructor": "destructor"
+    }
+    
+    for nombre_codigo, nombre_archivo in mapeo_piezas.items():
+        ruta_svg = os.path.join(ruta_assets, f"{nombre_archivo}.svg")
+        
+        try:
+            SVGS_CARGADOS[nombre_codigo] = pygame.image.load(ruta_svg)
+            print(f"✓ Cargado: {nombre_archivo}.svg")
+        except Exception as e:
+            print(f"✗ Error cargando {nombre_archivo}.svg: {e}")
+            print(f"  Buscando en: {ruta_svg}")
+            return False
+    
     return True
 
 def crear_superficie_pieza(nombre_pieza, color_rgb, tamano, cache_imagenes):

@@ -16,6 +16,16 @@ from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
 from game.piece import Pieza
 from game.audio import init_audio, get_audio
 
+import atexit
+
+def pausar_al_salir():
+    print("\n" + "="*50)
+    print("PRESIONA ENTER PARA CERRAR...")
+    print("="*50)
+    input()
+
+atexit.register(pausar_al_salir)
+
 # --- INICIALIZACIÓN DE PYGAME Y FUENTES ---
 pygame.init()
 if not cargar_svgs():
