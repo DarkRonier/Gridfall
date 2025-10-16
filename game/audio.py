@@ -20,7 +20,7 @@ class AudioManager:
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.sounds_path = os.path.join(script_dir, "assets", "sounds")
         
-        print(f"🔍 Buscando sonidos en: {self.sounds_path}")
+        print(f"Buscando sonidos en: {self.sounds_path}")
         
         # Cargar todos los sonidos
         self.load_sounds()
@@ -42,20 +42,20 @@ class AudioManager:
         # Intentar cargar cada sonido
         for sound_name, filename in sound_files.items():
             filepath = os.path.join(self.sounds_path, filename)
-            print(f"📁 Intentando cargar: {filepath}")
+            print(f"Intentando cargar: {filepath}")
             
             try:
                 if not os.path.exists(filepath):
-                    print(f"❌ Archivo NO existe: {filepath}")
+                    print(f"Archivo NO existe: {filepath}")
                     self.sounds[sound_name] = None
                     continue
                     
                 sound = pygame.mixer.Sound(filepath)
                 sound.set_volume(self.master_volume)
                 self.sounds[sound_name] = sound
-                print(f"✓ Sonido cargado: {sound_name}")
+                print(f"Sonido cargado: {sound_name}")
             except Exception as e:
-                print(f"✗ Error al cargar {filename}: {e}")
+                print(f"Error al cargar {filename}: {e}")
                 # Crear un sonido vacío para evitar errores
                 self.sounds[sound_name] = None
     
@@ -79,7 +79,7 @@ class AudioManager:
             else:
                 sound.play()
         else:
-            print(f"⚠ Sonido '{sound_name}' no encontrado")
+            print(f"Sonido '{sound_name}' no encontrado")
     
     def set_master_volume(self, volume):
         """
