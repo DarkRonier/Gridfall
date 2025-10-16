@@ -6,6 +6,7 @@ from game.drawing import (dibujar_tablero, dibujar_piezas, dibujar_resaltados, d
                           dibujar_numeros_flotantes, dibujar_animacion_activa, dibujar_proyectiles,
                           dibujar_pantalla_confirmacion, dibujar_borde_turno)
 from game.menu import mostrar_menu
+from game.tutorial import mostrar_tutorial
 from game.game_setup import crear_nuevo_juego
 from game.turn_manager import TurnManager
 from game.assets import cargar_svgs, crear_superficie_pieza
@@ -146,10 +147,33 @@ while True:
                         print("Deshaciendo el último movimiento...")
                         estado_anterior = historial_turnos.pop()
 
-                        tablero = estado_anterior['tablero']
-                        turn_manager.piezas_en_juego = estado_anterior['piezas_en_juego']
+                        # 1. Restaurar datos básicos
+                        tablero[:] = estado_anterior['tablero']
+                        turn_manager.piezas_en_juego = estado_anterior['piezas_en_juego'][:]
                         turn_manager.reloj = estado_anterior['reloj']
 
+                        # 2. CRÍTICO: Reconstruir el tablero desde piezas_en_juego
+                        # Esto asegura que las referencias sean consistentes
+                        for fila in range(FILAS):
+                            for col in range(COLUMNAS):
+                                tablero[fila][col] = None
+                        
+                        for pieza in turn_manager.piezas_en_juego:
+                            fila, col = pieza.posicion
+                            tablero[fila][col] = pieza
+
+                        # 3. CRÍTICO: Limpiar piezas muertas (por si acaso)
+                        piezas_vivas = [p for p in turn_manager.piezas_en_juego if p.hp > 0]
+                        turn_manager.piezas_en_juego = piezas_vivas
+
+                        # 4. Limpiar tablero de piezas muertas
+                        for fila in range(FILAS):
+                            for col in range(COLUMNAS):
+                                pieza = tablero[fila][col]
+                                if pieza is not None and pieza.hp <= 0:
+                                    tablero[fila][col] = None
+
+                        # 5. Resetear todo el estado visual
                         pieza_activa = None
                         animacion_en_curso = None
                         numeros_flotantes.clear()
@@ -158,7 +182,7 @@ while True:
                         ataques_resaltados.clear()
                     else:
                         print("No hay movimientos para deshacer.")
-                
+                        
                 elif BOTON_PASAR_RECT.collidepoint(pos_clic):
                     print("Pasando turno...")
                     finalizar_turno()
@@ -279,6 +303,9 @@ while True:
                 elif BOTON_CONFIRMAR_NO_RECT.collidepoint(evento.pos):
                     estado_juego = 'en_juego'
     
+    elif estado_juego == 'tutorial':
+        estado_juego = mostrar_tutorial(pantalla, fuente_menu, fuente_ui, CACHE_IMAGENES)
+
     elif estado_juego == 'fin_del_juego':
         if not hasattr(audio, '_victoria_sonada'):
             audio.play_victory()
