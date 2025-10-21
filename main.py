@@ -43,6 +43,7 @@ fuente_ui = pygame.font.SysFont("Arial", 20)
 fuente_menu = pygame.font.SysFont("Impact", 40)
 fuente_hp = pygame.font.SysFont("Arial", 14, bold=True)
 fuente_damage = pygame.font.SysFont("Impact", 28)
+es_fullscreen = False
 
 # --- GESTOR DE ESTADOS DEL JUEGO ---
 estado_juego = 'menu_principal'
@@ -61,7 +62,7 @@ historial_turnos = []
 
 while True:
     if estado_juego == 'menu_principal':
-        estado_juego = mostrar_menu(pantalla, fuente_menu)
+        estado_juego, pantalla, es_fullscreen = mostrar_menu(pantalla, fuente_menu, es_fullscreen)
         if estado_juego == 'en_juego':
             tablero = crear_nuevo_juego()
             turn_manager = TurnManager(tablero)
