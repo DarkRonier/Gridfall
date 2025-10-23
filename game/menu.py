@@ -375,6 +375,7 @@ def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
                             # Activar fullscreen
                             ancho, alto, escala, offset_x, offset_y = constants.calcular_fullscreen()
                             constants.actualizar_dimensiones_ventana(ancho, alto, escala, offset_x, offset_y, True)
+                            print(f"DEBUG: Activando fullscreen con offset_x={offset_x}, offset_y={offset_y}")
                             pantalla = pygame.display.set_mode((ancho, alto), pygame.FULLSCREEN)
                             es_fullscreen = True
                         else:

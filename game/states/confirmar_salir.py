@@ -5,7 +5,7 @@ Maneja la pantalla de confirmación para volver al menú
 
 import pygame
 from game.constants import *
-from game.drawing import dibujar_pantalla_confirmacion
+from game.drawing import dibujar_pantalla_confirmacion, obtener_botones_confirmacion
 
 
 def manejar_estado_confirmar_salir(pantalla, superficie_blur, fuente_menu, fuente_ui):
@@ -25,6 +25,9 @@ def manejar_estado_confirmar_salir(pantalla, superficie_blur, fuente_menu, fuent
     reloj = pygame.time.Clock()
     
     while True:
+        # Obtener las posiciones actuales de los botones
+        BOTON_CONFIRMAR_SI_RECT, BOTON_CONFIRMAR_NO_RECT = obtener_botones_confirmacion()
+        
         # Dibujar la pantalla de confirmación
         dibujar_pantalla_confirmacion(pantalla, superficie_blur, fuente_menu, fuente_ui)
         pygame.display.flip()
