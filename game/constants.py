@@ -43,54 +43,43 @@ COLOR_HP_MEDIA = (255, 215, 0) # Amarillo
 COLOR_HP_BAJA = (255, 60, 30)   # Rojo
 
 # --- ESTADOS DE CASILLA (PARA LA VISUALIZACIÓN) ---
-# Estos ya no representan la lógica principal, sino cómo se dibuja
-# una casilla al ser marcada como accesible, por ejemplo.
 VACIA = 0
 ACCESIBLE = 1
 BAJO_ATAQUE = 2
-
 
 # --- UI ---
 BOTON_VOLVER_RECT = pygame.Rect(10, 10, 100, 40)
 BOTON_PASAR_RECT = pygame.Rect(ANCHO_VENTANA - 60, 10, 50, 40)
 BOTON_DESHACER_RECT = pygame.Rect(ANCHO_VENTANA - 120, 10, 50, 40)
-# Rectángulo para el panel de confirmación
 PANEL_CONFIRMACION_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 250, ALTO_VENTANA / 2 - 100, 500, 200)
-# Botones dentro del panel de confirmación
 BOTON_CONFIRMAR_SI_RECT = pygame.Rect(ANCHO_VENTANA / 2 - 150, ALTO_VENTANA / 2 + 20, 120, 50)
 BOTON_CONFIRMAR_NO_RECT = pygame.Rect(ANCHO_VENTANA / 2 + 30, ALTO_VENTANA / 2 + 20, 120, 50)
 
 COLOR_RESALTADO_ACTIVO = (240, 240, 160, 250)
 
-# Rectángulo para el borde del turno. Es 10px más grande que el tablero en cada lado.
 GROSOR_BORDE = 7
 TABLERO_RECT = pygame.Rect(0, UI_ALTO, ANCHO_TABLERO, ALTO_TABLERO)
 BORDE_RECT = TABLERO_RECT.inflate(GROSOR_BORDE, GROSOR_BORDE)
 COLOR_BORDE_NEUTRO = (40, 40, 40) 
 
 # --- COLORES DEL MENÚ ---
-# Botones principales
-COLOR_MENU_JUGAR = (40, 120, 40)      # Verde oscuro
-COLOR_MENU_REGLAS = (40, 80, 140)     # Azul oscuro
-COLOR_MENU_OPCIONES = (100, 60, 140)  # Morado oscuro
-COLOR_MENU_CERRAR = (140, 40, 40)     # Rojo oscuro
+COLOR_MENU_JUGAR = (40, 120, 40)
+COLOR_MENU_REGLAS = (40, 80, 140)
+COLOR_MENU_OPCIONES = (100, 60, 140)
+COLOR_MENU_CERRAR = (140, 40, 40)
 
-# Hover (más brillantes)
 COLOR_MENU_JUGAR_HOVER = (60, 180, 60)
 COLOR_MENU_REGLAS_HOVER = (60, 120, 200)
 COLOR_MENU_OPCIONES_HOVER = (140, 90, 200)
 COLOR_MENU_CERRAR_HOVER = (200, 60, 60)
 
-# Submenú
-COLOR_SUBMENU = (50, 50, 50)           # Gris oscuro
-COLOR_SUBMENU_HOVER = (70, 70, 70)     # Gris más claro
-COLOR_SUBMENU_DISABLED = (30, 30, 30)  # Casi negro
+COLOR_SUBMENU = (50, 50, 50)
+COLOR_SUBMENU_HOVER = (70, 70, 70)
+COLOR_SUBMENU_DISABLED = (30, 30, 30)
 
-# Texto
 COLOR_TEXTO_NORMAL = (255, 255, 255)
 COLOR_TEXTO_DISABLED = (100, 100, 100)
 COLOR_CANDADO = (80, 80, 80) 
-
 
 # --- FUNCIONES DE UTILIDAD ---
 
@@ -111,23 +100,40 @@ def actualizar_dimensiones_ventana(ancho, alto, escala=1.0, offset_x=0, offset_y
     
     # Actualizar dimensiones escaladas
     UI_ALTO = int(UI_ALTO_BASE * escala)
-    ANCHO_TABLERO = int(ANCHO_BASE * escala)
-    ALTO_TABLERO = int((ANCHO_BASE + 90) * escala)
     TAMANO_CASILLA = int((ANCHO_BASE // COLUMNAS) * escala)
+    # CRÍTICO: ANCHO_TABLERO debe ser exactamente el ancho de las casillas dibujadas
+    ANCHO_TABLERO = TAMANO_CASILLA * COLUMNAS
+    ALTO_TABLERO = TAMANO_CASILLA * FILAS
 
 def calcular_fullscreen():
     """
     Calcula las dimensiones y escalado para modo fullscreen.
+    Usa el 95% del espacio disponible con márgenes mínimos.
     Retorna: (ancho, alto, escala, offset_x, offset_y)
     """
+    # Crear ventana temporal fullscreen para obtener resolución real
+    temp_screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     info = pygame.display.Info()
     ancho_monitor = info.current_w
     alto_monitor = info.current_h
     
-    # Calcular escala manteniendo aspecto
-    escala_x = ancho_monitor / ANCHO_BASE
-    escala_y = alto_monitor / ALTO_BASE
+    # Restaurar ventana normal
+    pygame.display.set_mode((ANCHO_BASE, ALTO_BASE))
+    
+    print(f"DEBUG calcular_fullscreen: Monitor detectado = {ancho_monitor}x{alto_monitor}")
+    
+    # Margen mínimo (2.5% de cada lado = 95% de uso)
+    margen_porcentaje = 0.025
+    ancho_util = ancho_monitor * (1 - 2 * margen_porcentaje)
+    alto_util = alto_monitor * (1 - 2 * margen_porcentaje)
+    
+    # Calcular escala para usar el máximo espacio disponible
+    escala_x = ancho_util / ANCHO_BASE
+    escala_y = alto_util / ALTO_BASE
     escala = min(escala_x, escala_y)  # Usar la menor para que quepa todo
+    
+    # Limitar escala máxima a 3.0 para pantallas muy grandes (4K, 8K)
+    escala = min(escala, 3.0)
     
     # Calcular tamaño escalado
     ancho_escalado = int(ANCHO_BASE * escala)
@@ -136,5 +142,10 @@ def calcular_fullscreen():
     # Calcular offsets para centrar
     offset_x = (ancho_monitor - ancho_escalado) // 2
     offset_y = (alto_monitor - alto_escalado) // 2
+    
+    print(f"DEBUG calcular_fullscreen: Escala = {escala:.2f}")
+    print(f"DEBUG calcular_fullscreen: Tamaño escalado = {ancho_escalado}x{alto_escalado}")
+    print(f"DEBUG calcular_fullscreen: Uso de pantalla = {(ancho_escalado/ancho_monitor)*100:.1f}% ancho, {(alto_escalado/alto_monitor)*100:.1f}% alto")
+    print(f"DEBUG calcular_fullscreen: Offsets = X:{offset_x}, Y:{offset_y}")
     
     return ancho_monitor, alto_monitor, escala, offset_x, offset_y
