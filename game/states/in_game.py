@@ -5,11 +5,10 @@ Maneja toda la lógica del juego principal
 
 import copy
 import pygame
-from game.constants import *
+from game import constants
 from game.drawing import (dibujar_tablero, dibujar_piezas, dibujar_resaltados, dibujar_ui,
                           dibujar_numeros_flotantes, dibujar_animacion_activa, dibujar_proyectiles,
-                          dibujar_borde_turno, obtener_boton_volver, obtener_boton_deshacer, 
-                          obtener_boton_pasar, obtener_botones_confirmacion)
+                          dibujar_borde_turno, obtener_boton_volver, obtener_boton_deshacer, obtener_boton_pasar)
 from game.logic import calcular_casillas_posibles, calcular_ataques_posibles, verificar_ganador
 from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
                           FadeOutAnimation, ProjectileAnimation)
@@ -132,11 +131,6 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                     ataques_resaltados = calcular_ataques_posibles(pieza_activa, tablero)
                     break
         
-        # Obtener las posiciones actuales de los botones (con offsets aplicados)
-        BOTON_VOLVER_RECT = obtener_boton_volver()
-        BOTON_DESHACER_RECT = obtener_boton_deshacer()
-        BOTON_PASAR_RECT = obtener_boton_pasar()
-        
         # --- Manejo de Eventos ---
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -152,14 +146,19 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             if evento.type == pygame.MOUSEBUTTONDOWN and pieza_activa and not animacion_en_curso:
                 pos_clic = evento.pos
                 
-                if BOTON_VOLVER_RECT.collidepoint(pos_clic):
+                # Obtener rectángulos de botones con offsets aplicados
+                BOTON_VOLVER = obtener_boton_volver()
+                BOTON_DESHACER = obtener_boton_deshacer()
+                BOTON_PASAR = obtener_boton_pasar()
+                
+                if BOTON_VOLVER.collidepoint(pos_clic):
                     print("Volviendo al menú principal...")
                     copia_pantalla = pantalla.copy()
-                    ancho_pantalla = pantalla.get_width()
-                    alto_pantalla = pantalla.get_height()
-                    pequena = pygame.transform.smoothscale(copia_pantalla, (ancho_pantalla // 10, alto_pantalla // 10))
-                    superficie_blur = pygame.transform.scale(pequena, (ancho_pantalla, alto_pantalla))
-                    velo_oscuro = pygame.Surface((ancho_pantalla, alto_pantalla), pygame.SRCALPHA)
+                    ancho_real = pantalla.get_width()
+                    alto_real = pantalla.get_height()
+                    pequena = pygame.transform.smoothscale(copia_pantalla, (ancho_real // 10, alto_real // 10))
+                    superficie_blur = pygame.transform.scale(pequena, (ancho_real, alto_real))
+                    velo_oscuro = pygame.Surface((ancho_real, alto_real), pygame.SRCALPHA)
                     velo_oscuro.fill((0, 0, 0, 150))
                     superficie_blur.blit(velo_oscuro, (0, 0))
                     return ('confirmacion_salir', {
@@ -171,7 +170,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                         'superficie_blur': superficie_blur
                     })
                 
-                elif BOTON_DESHACER_RECT.collidepoint(pos_clic):
+                elif BOTON_DESHACER.collidepoint(pos_clic):
                     if historial_turnos:
                         print("Deshaciendo el último movimiento...")
                         estado_anterior = historial_turnos.pop()
@@ -182,8 +181,8 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                         turn_manager.reloj = estado_anterior['reloj']
                         
                         # Reconstruir el tablero desde piezas_en_juego
-                        for fila in range(FILAS):
-                            for col in range(COLUMNAS):
+                        for fila in range(constants.FILAS):
+                            for col in range(constants.COLUMNAS):
                                 tablero[fila][col] = None
                         
                         for pieza in turn_manager.piezas_en_juego:
@@ -191,8 +190,8 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                             tablero[fila][col] = pieza
                         
                         # Limpiar piezas muertas
-                        for fila in range(FILAS):
-                            for col in range(COLUMNAS):
+                        for fila in range(constants.FILAS):
+                            for col in range(constants.COLUMNAS):
                                 pieza = tablero[fila][col]
                                 if pieza is not None and pieza.hp <= 0:
                                     tablero[fila][col] = None
@@ -207,82 +206,92 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                     else:
                         print("No hay movimientos para deshacer.")
                 
-                elif BOTON_PASAR_RECT.collidepoint(pos_clic):
+                elif BOTON_PASAR.collidepoint(pos_clic):
                     print("Pasando turno...")
                     finalizar_turno()
                 
-                # Detectar clics en el tablero (con OFFSETS)
-                elif pos_clic[1] >= OFFSET_Y + UI_ALTO and pos_clic[0] >= OFFSET_X:
-                    fila_clic = (pos_clic[1] - OFFSET_Y - UI_ALTO) // TAMANO_CASILLA
-                    col_clic = (pos_clic[0] - OFFSET_X) // TAMANO_CASILLA
+                # CRÍTICO: Convertir coordenadas de mouse a casilla del tablero
+                # Restar offsets ANTES de calcular la casilla
+                else:
+                    # Coordenadas relativas al tablero (sin offsets)
+                    x_relativo = pos_clic[0] - constants.OFFSET_X
+                    y_relativo = pos_clic[1] - constants.OFFSET_Y - constants.UI_ALTO
                     
                     # Verificar que el clic está dentro del tablero
-                    if 0 <= fila_clic < FILAS and 0 <= col_clic < COLUMNAS:
-                        if (fila_clic, col_clic) in ataques_resaltados:
-                            if not pieza_activa.ha_atacado:
-                                pieza_atacada = tablero[fila_clic][col_clic]
-                                
-                                def aplicar_dano_callback():
-                                    print(f"{pieza_activa.nombre} impacta a {pieza_atacada.nombre}.")
-                                    if pieza_activa.tipo_ataque == 'ranged':
-                                        audio.play_ranged_impact()
-                                    
-                                    pieza_atacada.recibir_dano(pieza_activa.atk)
-                                    
-                                    centro_x = OFFSET_X + col_clic * TAMANO_CASILLA + TAMANO_CASILLA / 2
-                                    centro_y = OFFSET_Y + fila_clic * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2
-                                    pos_damage = (centro_x, centro_y + (0.05 * TAMANO_CASILLA))
-                                    nuevo_numero = DamageText(pieza_activa.atk, pos_damage, fuente_damage)
-                                    numeros_flotantes.append(nuevo_numero)
-                                    
-                                    if not pieza_atacada.esta_viva():
-                                        audio.play_death()
-                                        if pieza_atacada in turn_manager.piezas_en_juego:
-                                            turn_manager.piezas_en_juego.remove(pieza_atacada)
-                                            nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
-                                            animaciones_muerte.append(nueva_anim_muerte)
-                                            tablero[fila_clic][col_clic] = None
-                                
-                                pieza_activa.ha_atacado = True
-                                ataques_resaltados = []
-                                movimientos_resaltados = []
-                                
-                                start_px = (OFFSET_X + pieza_activa.posicion[1] * TAMANO_CASILLA + TAMANO_CASILLA / 2,
-                                           OFFSET_Y + pieza_activa.posicion[0] * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
-                                target_px = (OFFSET_X + col_clic * TAMANO_CASILLA + TAMANO_CASILLA / 2,
-                                            OFFSET_Y + fila_clic * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
-                                
-                                if pieza_activa.tipo_ataque == 'melee':
-                                    animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
-                                    audio.play_melee_attack()
-                                elif pieza_activa.tipo_ataque == 'ranged':
-                                    animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
-                                    audio.play_ranged_cast()
+                    if x_relativo >= 0 and y_relativo >= 0:
+                        col_clic = x_relativo // constants.TAMANO_CASILLA
+                        fila_clic = y_relativo // constants.TAMANO_CASILLA
                         
-                        elif (fila_clic, col_clic) in movimientos_resaltados:
-                            if not pieza_activa.ha_movido:
-                                vieja_fila, vieja_col = pieza_activa.posicion
-                                
-                                start_px = (OFFSET_X + vieja_col * TAMANO_CASILLA + TAMANO_CASILLA / 2,
-                                           OFFSET_Y + vieja_fila * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
-                                end_px = (OFFSET_X + col_clic * TAMANO_CASILLA + TAMANO_CASILLA / 2,
-                                         OFFSET_Y + fila_clic * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
-                                
-                                animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
-                                audio.play_move()
-                                
-                                tablero[vieja_fila][vieja_col] = None
-                                tablero[fila_clic][col_clic] = pieza_activa
-                                pieza_activa.posicion = (fila_clic, col_clic)
-                                pieza_activa.ha_movido = True
-                                
-                                movimientos_resaltados = []
-                                ataques_resaltados = []
+                        # Verificar que la casilla está dentro de los límites
+                        if 0 <= fila_clic < constants.FILAS and 0 <= col_clic < constants.COLUMNAS:
+                            if (fila_clic, col_clic) in ataques_resaltados:
+                                if not pieza_activa.ha_atacado:
+                                    pieza_atacada = tablero[fila_clic][col_clic]
+                                    
+                                    def aplicar_dano_callback():
+                                        print(f"{pieza_activa.nombre} impacta a {pieza_atacada.nombre}.")
+                                        if pieza_activa.tipo_ataque == 'ranged':
+                                            audio.play_ranged_impact()
+                                        
+                                        pieza_atacada.recibir_dano(pieza_activa.atk)
+                                        
+                                        # Calcular posición en píxeles CON offsets
+                                        centro_x = constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2
+                                        centro_y = constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2
+                                        pos_damage = (centro_x, centro_y + (0.05 * constants.TAMANO_CASILLA))
+                                        nuevo_numero = DamageText(pieza_activa.atk, pos_damage, fuente_damage)
+                                        numeros_flotantes.append(nuevo_numero)
+                                        
+                                        if not pieza_atacada.esta_viva():
+                                            audio.play_death()
+                                            if pieza_atacada in turn_manager.piezas_en_juego:
+                                                turn_manager.piezas_en_juego.remove(pieza_atacada)
+                                                nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
+                                                animaciones_muerte.append(nueva_anim_muerte)
+                                                tablero[fila_clic][col_clic] = None
+                                    
+                                    pieza_activa.ha_atacado = True
+                                    ataques_resaltados = []
+                                    movimientos_resaltados = []
+                                    
+                                    # Calcular posiciones en píxeles CON offsets
+                                    start_px = (constants.OFFSET_X + pieza_activa.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                                               constants.OFFSET_Y + pieza_activa.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                                    target_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                                                constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                                    
+                                    if pieza_activa.tipo_ataque == 'melee':
+                                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
+                                        audio.play_melee_attack()
+                                    elif pieza_activa.tipo_ataque == 'ranged':
+                                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
+                                        audio.play_ranged_cast()
+                            
+                            elif (fila_clic, col_clic) in movimientos_resaltados:
+                                if not pieza_activa.ha_movido:
+                                    vieja_fila, vieja_col = pieza_activa.posicion
+                                    
+                                    # Calcular posiciones en píxeles CON offsets
+                                    start_px = (constants.OFFSET_X + vieja_col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                                               constants.OFFSET_Y + vieja_fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                                    end_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                                             constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                                    
+                                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
+                                    audio.play_move()
+                                    
+                                    tablero[vieja_fila][vieja_col] = None
+                                    tablero[fila_clic][col_clic] = pieza_activa
+                                    pieza_activa.posicion = (fila_clic, col_clic)
+                                    pieza_activa.ha_movido = True
+                                    
+                                    movimientos_resaltados = []
+                                    ataques_resaltados = []
         
         # --- Dibujado ---
-        # Rellenar el fondo completo PRIMERO si estamos en fullscreen
-        if MODO_FULLSCREEN:
-            pantalla.fill(COLOR_FONDO)
+        # Rellenar fondo si estamos en fullscreen
+        if constants.MODO_FULLSCREEN:
+            pantalla.fill((30, 30, 30))
         
         dibujar_tablero(pantalla)
         dibujar_borde_turno(pantalla, pieza_activa)
@@ -300,13 +309,14 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             alpha = animacion.get_alpha()
             
             from game.assets import crear_superficie_pieza
-            color = COLOR_J1_OPACO if pieza.jugador == 1 else COLOR_J2_OPACO
-            imagen_original = crear_superficie_pieza(pieza.nombre, color, (int(TAMANO_CASILLA*0.7), int(TAMANO_CASILLA*0.7)), CACHE_IMAGENES)
+            color = (60, 60, 180) if pieza.jugador == 1 else (180, 60, 60)  # COLOR_J1_OPACO / COLOR_J2_OPACO
+            imagen_original = crear_superficie_pieza(pieza.nombre, color, (int(constants.TAMANO_CASILLA*0.7), int(constants.TAMANO_CASILLA*0.7)), CACHE_IMAGENES)
             
             imagen_draw = imagen_original.copy()
             imagen_draw.set_alpha(alpha)
-            centro_x = int(OFFSET_X + pieza.posicion[1] * TAMANO_CASILLA + TAMANO_CASILLA / 2)
-            centro_y = int(OFFSET_Y + pieza.posicion[0] * TAMANO_CASILLA + UI_ALTO + TAMANO_CASILLA / 2)
+            # Calcular posición CON offsets
+            centro_x = int(constants.OFFSET_X + pieza.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2)
+            centro_y = int(constants.OFFSET_Y + pieza.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
             rect_imagen = imagen_draw.get_rect(center=(centro_x, centro_y))
             pantalla.blit(imagen_draw, rect_imagen)
         
@@ -314,4 +324,4 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
         dibujar_ui(pantalla, pygame.font.SysFont("Arial", 20), pieza_activa)
         
         pygame.display.flip()
-        reloj.tick(FPS)
+        reloj.tick(constants.FPS)
