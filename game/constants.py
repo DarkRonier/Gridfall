@@ -149,3 +149,14 @@ def calcular_fullscreen():
     print(f"DEBUG calcular_fullscreen: Offsets = X:{offset_x}, Y:{offset_y}")
     
     return ancho_monitor, alto_monitor, escala, offset_x, offset_y
+
+def obtener_tamanos_fuente():
+    """
+    Retorna los tamaños de fuente escalados según ESCALA_GLOBAL.
+    """
+    return {
+        'menu': int(40 * ESCALA_GLOBAL),
+        'ui': int(20 * ESCALA_GLOBAL),
+        'hp': int(14 * ESCALA_GLOBAL),
+        'damage': int(28 * ESCALA_GLOBAL)
+    }

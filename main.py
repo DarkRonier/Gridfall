@@ -11,6 +11,7 @@ import atexit
 
 # Importar módulos del juego
 from game.constants import *
+from game import constants
 from game.menu import mostrar_menu
 from game.tutorial import mostrar_tutorial
 from game.game_setup import crear_nuevo_juego
@@ -57,10 +58,12 @@ def main():
     pygame.display.set_caption(NOMBRE_VENTANA)
     
     # Crear fuentes
-    fuente_menu = pygame.font.SysFont("Impact", 40)
-    fuente_ui = pygame.font.SysFont("Arial", 20)
-    fuente_hp = pygame.font.SysFont("Arial", 14, bold=True)
-    fuente_damage = pygame.font.SysFont("Impact", 28)
+    # Crear fuentes escaladas
+    tamanos = constants.obtener_tamanos_fuente()
+    fuente_menu = pygame.font.SysFont("Impact", tamanos['menu'])
+    fuente_ui = pygame.font.SysFont("Arial", tamanos['ui'])
+    fuente_hp = pygame.font.SysFont("Arial", tamanos['hp'], bold=True)
+    fuente_damage = pygame.font.SysFont("Impact", tamanos['damage'])
     
     # Variable para rastrear modo fullscreen
     es_fullscreen = False
