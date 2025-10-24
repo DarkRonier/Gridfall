@@ -5,23 +5,16 @@ import os
 import pygame
 import io
 
-# Diccionario para guardar el contenido de los archivos SVG una vez leídos del disco.
 SVGS_CARGADOS = {}
 
 def cargar_svgs():
     """Carga todos los SVG de las piezas."""
-    # CRÍTICO: Detectar si estamos en .exe empaquetado
     if getattr(sys, 'frozen', False):
-        # Corriendo como .exe - PyInstaller extrae a carpeta temporal
         base_path = sys._MEIPASS
     else:
-        # Corriendo como script - usar carpeta del proyecto
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    # Ruta a la carpeta assets/pieces (CON "pieces" ahora)
-    ruta_assets = os.path.join(base_path, "assets", "pieces")  # ← CAMBIO AQUÍ
-    
-    # Mapeo de nombres (ajusta según tu código)
+    ruta_assets = os.path.join(base_path, "assets", "pieces")
+
     mapeo_piezas = {
         "Soldado": "soldier",
         "Paladin": "paladin", 

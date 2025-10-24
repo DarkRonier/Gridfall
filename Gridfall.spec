@@ -35,7 +35,7 @@ print(f"\nTOTAL DE ARCHIVOS A EMPAQUETAR: {len(datas)}")
 print("="*60 + "\n")
 
 if len(datas) == 0:
-    print("⚠️  ADVERTENCIA: No se encontraron archivos para empaquetar!")
+    print("ADVERTENCIA: No se encontraron archivos para empaquetar!")
 
 a = Analysis(
     ['main.py'],
