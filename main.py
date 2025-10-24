@@ -49,24 +49,110 @@ def main():
         pygame.quit()
         sys.exit()
     
+    # ===== PANTALLA DE CONFIGURACIÓN INICIAL =====
+    temp_screen = pygame.display.set_mode((500, 250))
+    pygame.display.set_caption("Gridfall - Configuración Inicial")
+    
+    fuente_titulo = pygame.font.SysFont("Impact", 28)
+    fuente_texto = pygame.font.SysFont("Arial", 18)
+    fuente_boton = pygame.font.SysFont("Arial", 20)
+    
+    preguntando = True
+    es_fullscreen = False
+    
+    while preguntando:
+        temp_screen.fill((30, 30, 30))
+        
+        # Título
+        texto_titulo = fuente_titulo.render("GRIDFALL", True, (255, 215, 0))
+        temp_screen.blit(texto_titulo, (180, 30))
+        
+        # Pregunta
+        texto_pregunta = fuente_texto.render("¿Iniciar en pantalla completa?", True, (255, 255, 255))
+        temp_screen.blit(texto_pregunta, (110, 90))
+        
+        # Botones
+        boton_si = pygame.Rect(100, 150, 120, 50)
+        boton_no = pygame.Rect(280, 150, 120, 50)
+        
+        # Detectar hover
+        pos_mouse = pygame.mouse.get_pos()
+        color_si = (80, 200, 80) if boton_si.collidepoint(pos_mouse) else (60, 180, 60)
+        color_no = (200, 80, 80) if boton_no.collidepoint(pos_mouse) else (180, 60, 60)
+        
+        pygame.draw.rect(temp_screen, color_si, boton_si, border_radius=8)
+        pygame.draw.rect(temp_screen, color_no, boton_no, border_radius=8)
+        
+        # Texto de botones
+        texto_si = fuente_boton.render("Sí (F)", True, (255, 255, 255))
+        texto_no = fuente_boton.render("No (W)", True, (255, 255, 255))
+        
+        temp_screen.blit(texto_si, texto_si.get_rect(center=boton_si.center))
+        temp_screen.blit(texto_no, texto_no.get_rect(center=boton_no.center))
+        
+        # Hint de atajos
+        texto_hint = fuente_texto.render("Puedes usar F (Fullscreen) o W (Ventana)", True, (150, 150, 150))
+        temp_screen.blit(texto_hint, (60, 220))
+        
+        pygame.display.flip()
+        
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                if boton_si.collidepoint(evento.pos):
+                    es_fullscreen = True
+                    preguntando = False
+                elif boton_no.collidepoint(evento.pos):
+                    es_fullscreen = False
+                    preguntando = False
+            
+            if evento.type == pygame.KEYDOWN:
+                # F = Fullscreen, W = Windowed (Ventana)
+                if evento.key == pygame.K_f:
+                    es_fullscreen = True
+                    preguntando = False
+                elif evento.key == pygame.K_w:
+                    es_fullscreen = False
+                    preguntando = False
+                # También permitir Enter=Sí, Escape=No
+                elif evento.key == pygame.K_RETURN:
+                    es_fullscreen = True
+                    preguntando = False
+                elif evento.key == pygame.K_ESCAPE:
+                    es_fullscreen = False
+                    preguntando = False
+    
+    # Cerrar ventana temporal y reiniciar Pygame limpiamente
+    pygame.display.quit()
+    pygame.quit()
+    pygame.init()
+    
+    # ===== CREAR VENTANA FINAL (UNA SOLA VEZ, SIN CAMBIOS POSTERIORES) =====
+    if es_fullscreen:
+        ancho, alto, escala, offset_x, offset_y = constants.calcular_fullscreen()
+        constants.actualizar_dimensiones_ventana(ancho, alto, escala, offset_x, offset_y, True)
+        pantalla = pygame.display.set_mode((ancho, alto), pygame.FULLSCREEN)
+        print(f"[INICIO] Modo fullscreen: {ancho}x{alto}, escala={escala:.2f}")
+    else:
+        constants.actualizar_dimensiones_ventana(constants.ANCHO_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
+        pantalla = pygame.display.set_mode((constants.ANCHO_BASE, constants.ALTO_BASE))
+        print(f"[INICIO] Modo ventana: {constants.ANCHO_BASE}x{constants.ALTO_BASE}")
+    
+    pygame.display.set_caption(NOMBRE_VENTANA)
+    
     # Inicializar audio
     audio = init_audio()
     audio.play_game_start()
     
-    # Crear ventana
-    pantalla = pygame.display.set_mode((ANCHO_VENTANA, ALTO_VENTANA))
-    pygame.display.set_caption(NOMBRE_VENTANA)
-    
-    # Crear fuentes
     # Crear fuentes escaladas
     tamanos = constants.obtener_tamanos_fuente()
     fuente_menu = pygame.font.SysFont("Impact", tamanos['menu'])
     fuente_ui = pygame.font.SysFont("Arial", tamanos['ui'])
     fuente_hp = pygame.font.SysFont("Arial", tamanos['hp'], bold=True)
     fuente_damage = pygame.font.SysFont("Impact", tamanos['damage'])
-    
-    # Variable para rastrear modo fullscreen
-    es_fullscreen = False
     
     # --- ESTADO DEL JUEGO ---
     estado_juego = 'menu_principal'

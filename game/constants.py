@@ -111,16 +111,19 @@ def calcular_fullscreen():
     Usa el 95% del espacio disponible con márgenes mínimos.
     Retorna: (ancho, alto, escala, offset_x, offset_y)
     """
+    # ===== OPTIMIZACIÓN: Cachear el tamaño del monitor =====
+    # Evita crear ventana temporal cada vez
+    if hasattr(calcular_fullscreen, '_cache'):
+        return calcular_fullscreen._cache
+    
     # Crear ventana temporal fullscreen para obtener resolución real
     temp_screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     info = pygame.display.Info()
     ancho_monitor = info.current_w
     alto_monitor = info.current_h
     
-    # Restaurar ventana normal
+    # Restaurar ventana normal INMEDIATAMENTE
     pygame.display.set_mode((ANCHO_BASE, ALTO_BASE))
-    
-    print(f"DEBUG calcular_fullscreen: Monitor detectado = {ancho_monitor}x{alto_monitor}")
     
     # Margen mínimo (2.5% de cada lado = 95% de uso)
     margen_porcentaje = 0.025
@@ -143,12 +146,11 @@ def calcular_fullscreen():
     offset_x = (ancho_monitor - ancho_escalado) // 2
     offset_y = (alto_monitor - alto_escalado) // 2
     
-    print(f"DEBUG calcular_fullscreen: Escala = {escala:.2f}")
-    print(f"DEBUG calcular_fullscreen: Tamaño escalado = {ancho_escalado}x{alto_escalado}")
-    print(f"DEBUG calcular_fullscreen: Uso de pantalla = {(ancho_escalado/ancho_monitor)*100:.1f}% ancho, {(alto_escalado/alto_monitor)*100:.1f}% alto")
-    print(f"DEBUG calcular_fullscreen: Offsets = X:{offset_x}, Y:{offset_y}")
+    # Cachear resultado para futuras llamadas
+    resultado = (ancho_monitor, alto_monitor, escala, offset_x, offset_y)
+    calcular_fullscreen._cache = resultado
     
-    return ancho_monitor, alto_monitor, escala, offset_x, offset_y
+    return resultado
 
 def obtener_tamanos_fuente():
     """

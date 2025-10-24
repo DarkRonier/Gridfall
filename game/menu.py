@@ -107,10 +107,13 @@ class MenuExpandible:
         
         # Si OPCIONES está expandido, agregar subopciones
         if self.seccion_expandida == 'opciones':
+            # Texto descriptivo según el estado actual (SOLO LECTURA)
+            texto_fullscreen = f"Pantalla Completa: {'SÍ' if self.fullscreen_activo else 'NO'}"
+            
             subopciones = [
                 {'texto': 'Música', 'tipo': 'toggle', 'habilitado': False, 'tooltip': 'Disponible en v0.5.x'},
                 {'texto': 'Volumen', 'tipo': 'slider', 'habilitado': False, 'tooltip': 'Disponible en v0.5.x'},
-                {'texto': 'Pantalla Completa', 'tipo': 'toggle', 'habilitado': True, 'valor': self.fullscreen_activo}
+                {'texto': texto_fullscreen, 'tipo': 'info', 'habilitado': False, 'tooltip': 'Reinicia el juego para cambiar'}
             ]
             
             alto_sub = int(50 * constants.ESCALA_GLOBAL)
@@ -274,6 +277,7 @@ class MenuExpandible:
                                             subopcion['rect'].centery - 9 * constants.ESCALA_GLOBAL)
                     
                     # Dibujar toggle si es de tipo toggle y está habilitado
+                    # NOTA: Ya no hay toggles habilitados para fullscreen
                     if subopcion.get('tipo') == 'toggle' and subopcion['habilitado']:
                         valor = subopcion.get('valor', False)
                         self._dibujar_toggle(subopcion['rect'].right - 50 * constants.ESCALA_GLOBAL, 
@@ -310,13 +314,9 @@ class MenuExpandible:
                         
                         # Subopción habilitada
                         if subopcion.get('tipo') == 'toggle':
-                            # Toggle el valor
+                            # Toggle el valor (pero ya no hay toggles activos)
                             subopcion['valor'] = not subopcion.get('valor', False)
-                            
-                            # Si es fullscreen, aplicar cambio
-                            if subopcion['texto'] == 'Pantalla Completa':
-                                self.fullscreen_activo = subopcion['valor']
-                                return ('toggle_fullscreen', subopcion['valor'])
+                            # Ya no retorna toggle_fullscreen
                         
                         elif 'accion' in subopcion:
                             return ('accion', subopcion['accion'])
@@ -342,9 +342,15 @@ def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
     pantalla = pantalla_actual
     menu = MenuExpandible(pantalla, fuente_grande, fuente_mediana, es_fullscreen)
     
+    # Reloj para controlar FPS
+    reloj = pygame.time.Clock()
+    
     while True:
         menu.dibujar()
         pygame.display.flip()
+        
+        # Limitar a 60 FPS para reducir consumo
+        reloj.tick(60)
         
         # Manejo de eventos
         for evento in pygame.event.get():
@@ -369,20 +375,3 @@ def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
                         elif valor == 'cargar':
                             return ('cargar_partida', pantalla, es_fullscreen)
                     
-                    elif tipo == 'toggle_fullscreen':
-                        # Cambiar modo fullscreen
-                        if valor:
-                            # Activar fullscreen
-                            ancho, alto, escala, offset_x, offset_y = constants.calcular_fullscreen()
-                            constants.actualizar_dimensiones_ventana(ancho, alto, escala, offset_x, offset_y, True)
-                            print(f"DEBUG: Activando fullscreen con offset_x={offset_x}, offset_y={offset_y}")
-                            pantalla = pygame.display.set_mode((ancho, alto), pygame.FULLSCREEN)
-                            es_fullscreen = True
-                        else:
-                            # Desactivar fullscreen
-                            constants.actualizar_dimensiones_ventana(constants.ANCHO_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
-                            pantalla = pygame.display.set_mode((constants.ANCHO_BASE, constants.ALTO_BASE))
-                            es_fullscreen = False
-                        
-                        # Recrear menú con nuevas dimensiones y estado
-                        menu = MenuExpandible(pantalla, fuente_grande, fuente_mediana, es_fullscreen)
