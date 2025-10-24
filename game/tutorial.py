@@ -141,7 +141,7 @@ def pantalla_seleccion_piezas(pantalla, fuente_titulo, fuente_texto, cache_image
         pantalla.fill(COLOR_FONDO)
         
         # Título (centrado en pantalla real)
-        texto_titulo = fuente_titulo_escalada.render("CÓMO JUGAR - SELECCIONA UNA UNIDAD", True, (255, 255, 255))
+        texto_titulo = fuente_titulo_escalada.render("SELECCIONA UNA UNIDAD", True, (255, 255, 255))
         rect_titulo = texto_titulo.get_rect(center=(ancho_real/2, dims['margen_titulo']))
         pantalla.blit(texto_titulo, rect_titulo)
         
@@ -185,11 +185,11 @@ def pantalla_seleccion_piezas(pantalla, fuente_titulo, fuente_texto, cache_image
             if evento.type == pygame.MOUSEBUTTONDOWN:
                 pos = evento.pos
                 
-                for boton in botones_piezas:
+                for idx, boton in enumerate(botones_piezas):
                     if boton['rect'].collidepoint(pos):
                         resultado = pantalla_detalle_pieza(
                             pantalla, fuente_titulo, fuente_texto, 
-                            cache_imagenes, boton['pieza_info']
+                            cache_imagenes, piezas_disponibles, idx
                         )
                         if resultado == 'saliendo':
                             return 'saliendo'
@@ -204,7 +204,7 @@ def pantalla_seleccion_piezas(pantalla, fuente_titulo, fuente_texto, cache_image
         reloj.tick(60)
 
 
-def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes, pieza_info):
+def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes, piezas_disponibles, indice_actual):
     """Pantalla que muestra el tablero con la pieza, sus movimientos/ataques y stats."""
     
     # Obtener dimensiones correctas según modo
@@ -214,60 +214,19 @@ def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes
     dims = obtener_dimensiones_tutorial()
     escala = get_escala_tutorial()
     
+    # Estado inicial
+    modo = 'movimiento'
+    
     # Dimensiones del tablero tutorial escaladas
     TUTORIAL_FILAS = 7
     TUTORIAL_COLS = 7
     tablero_ancho = TUTORIAL_COLS * dims['casilla']
     tablero_alto = TUTORIAL_FILAS * dims['casilla']
     
-    # Crear la pieza
-    pieza = pieza_info['creador'](jugador=1)
-    pieza.posicion = (TUTORIAL_FILAS // 2, TUTORIAL_COLS // 2)
-    
-    # Crear tablero pequeño
-    tablero_tutorial = [[None for _ in range(TUTORIAL_COLS)] for _ in range(TUTORIAL_FILAS)]
-    tablero_tutorial[pieza.posicion[0]][pieza.posicion[1]] = pieza
-    
-    # Estado inicial
-    modo = 'movimiento'
-    
     # Layout: centrar tablero en la mitad izquierda de la pantalla
     mitad_izquierda = ancho_real / 2
     tablero_x = (mitad_izquierda - tablero_ancho) / 2
     tablero_y = (alto_real - tablero_alto) / 2
-    
-    # Botones de modo (debajo del tablero)
-    ancho_boton_modo = int(150 * escala)
-    alto_boton_modo = int(40 * escala)
-    espacio_botones = int(20 * escala)
-    
-    y_botones = tablero_y + tablero_alto + espacio_botones
-    boton_movimiento = pygame.Rect(
-        tablero_x,
-        y_botones,
-        ancho_boton_modo,
-        alto_boton_modo
-    )
-    boton_ataque = pygame.Rect(
-        tablero_x + ancho_boton_modo + espacio_botones,
-        y_botones,
-        ancho_boton_modo,
-        alto_boton_modo
-    )
-    
-    # Tabla de stats (mitad derecha de la pantalla)
-    stats_x = mitad_izquierda + int(50 * escala)
-    stats_y = tablero_y
-    
-    # Botón volver
-    ancho_boton_volver = int(150 * escala)
-    alto_boton_volver = int(50 * escala)
-    boton_volver = pygame.Rect(
-        ancho_real/2 - ancho_boton_volver/2,
-        alto_real - int(80 * escala),
-        ancho_boton_volver,
-        alto_boton_volver
-    )
     
     # Crear fuentes escaladas
     tamano_fuente_titulo = int(40 * escala)
@@ -278,12 +237,90 @@ def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes
     reloj = pygame.time.Clock()
     
     while True:
+        # Obtener pieza actual según índice
+        pieza_info = piezas_disponibles[indice_actual]
+        
+        # Crear la pieza
+        pieza = pieza_info['creador'](jugador=1)
+        pieza.posicion = (TUTORIAL_FILAS // 2, TUTORIAL_COLS // 2)
+        
+        # Crear tablero pequeño
+        tablero_tutorial = [[None for _ in range(TUTORIAL_COLS)] for _ in range(TUTORIAL_FILAS)]
+        tablero_tutorial[pieza.posicion[0]][pieza.posicion[1]] = pieza
+        
+        # Botones de navegación (<<  NOMBRE  >>)
+        tamano_boton_nav = int(50 * escala)
+        espacio_nav = int(20 * escala)
+        
+        # Calcular posición del título
+        texto_titulo = fuente_titulo_escalada.render(pieza_info['nombre'].upper(), True, (255, 215, 0))
+        rect_titulo = texto_titulo.get_rect(center=(ancho_real/2, int(40 * escala)))
+        
+        # Botones de navegación a los lados del título
+        boton_anterior = pygame.Rect(
+            rect_titulo.left - tamano_boton_nav - espacio_nav,
+            rect_titulo.centery - tamano_boton_nav/2,
+            tamano_boton_nav,
+            tamano_boton_nav
+        )
+        
+        boton_siguiente = pygame.Rect(
+            rect_titulo.right + espacio_nav,
+            rect_titulo.centery - tamano_boton_nav/2,
+            tamano_boton_nav,
+            tamano_boton_nav
+        )
+        
+        # Botones de modo (debajo del tablero)
+        ancho_boton_modo = int(150 * escala)
+        alto_boton_modo = int(40 * escala)
+        espacio_botones = int(20 * escala)
+        
+        y_botones = tablero_y + tablero_alto + espacio_botones
+        boton_movimiento = pygame.Rect(
+            tablero_x,
+            y_botones,
+            ancho_boton_modo,
+            alto_boton_modo
+        )
+        boton_ataque = pygame.Rect(
+            tablero_x + ancho_boton_modo + espacio_botones,
+            y_botones,
+            ancho_boton_modo,
+            alto_boton_modo
+        )
+        
+        # Tabla de stats (mitad derecha de la pantalla)
+        stats_x = mitad_izquierda + int(50 * escala)
+        stats_y = tablero_y
+        
+        # Botón volver
+        ancho_boton_volver = int(150 * escala)
+        alto_boton_volver = int(50 * escala)
+        boton_volver = pygame.Rect(
+            ancho_real/2 - ancho_boton_volver/2,
+            alto_real - int(80 * escala),
+            ancho_boton_volver,
+            alto_boton_volver
+        )
+        
         pantalla.fill(COLOR_FONDO)
         
-        # Título
-        texto_titulo = fuente_titulo_escalada.render(f"UNIDAD: {pieza_info['nombre'].upper()}", True, (255, 215, 0))
-        rect_titulo = texto_titulo.get_rect(center=(ancho_real/2, int(40 * escala)))
+        # Título con botones de navegación
         pantalla.blit(texto_titulo, rect_titulo)
+        
+        # Botón anterior (<<)
+        radio_nav = int(8 * escala)
+        color_anterior = (80, 80, 120) if indice_actual > 0 else (40, 40, 40)
+        pygame.draw.rect(pantalla, color_anterior, boton_anterior, border_radius=radio_nav)
+        texto_anterior = fuente_texto_escalada.render("<<", True, (255, 255, 255) if indice_actual > 0 else (100, 100, 100))
+        pantalla.blit(texto_anterior, texto_anterior.get_rect(center=boton_anterior.center))
+        
+        # Botón siguiente (>>)
+        color_siguiente = (80, 80, 120) if indice_actual < len(piezas_disponibles) - 1 else (40, 40, 40)
+        pygame.draw.rect(pantalla, color_siguiente, boton_siguiente, border_radius=radio_nav)
+        texto_siguiente = fuente_texto_escalada.render(">>", True, (255, 255, 255) if indice_actual < len(piezas_disponibles) - 1 else (100, 100, 100))
+        pantalla.blit(texto_siguiente, texto_siguiente.get_rect(center=boton_siguiente.center))
         
         # Dibujar tablero con resaltados
         dibujar_tablero_con_resaltados_tutorial(
@@ -308,11 +345,11 @@ def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes
         texto_atk = fuente_texto_escalada.render("Ataque", True, (255, 255, 255))
         pantalla.blit(texto_atk, texto_atk.get_rect(center=boton_ataque.center))
         
-        # Tabla de stats
+        # Tabla de stats (SIN el nombre de la pieza)
         dibujar_tabla_stats(pantalla, pieza, stats_x, stats_y, fuente_titulo_escalada, fuente_texto_escalada)
         
         # Descripción
-        desc_y = stats_y + int(200 * escala)
+        desc_y = stats_y + int(150 * escala)  # Ajustado para compensar la eliminación del nombre
         dibujar_descripcion(pantalla, pieza, stats_x, desc_y, fuente_texto_escalada, ancho_real)
         
         # Botón volver
@@ -337,10 +374,25 @@ def pantalla_detalle_pieza(pantalla, fuente_titulo, fuente_texto, cache_imagenes
                     modo = 'ataque'
                 elif boton_volver.collidepoint(pos):
                     return 'seleccion'
+                
+                # Navegación entre piezas
+                elif boton_anterior.collidepoint(pos) and indice_actual > 0:
+                    indice_actual -= 1
+                    modo = 'movimiento'  # Resetear modo al cambiar de pieza
+                elif boton_siguiente.collidepoint(pos) and indice_actual < len(piezas_disponibles) - 1:
+                    indice_actual += 1
+                    modo = 'movimiento'  # Resetear modo al cambiar de pieza
             
             if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
                     return 'seleccion'
+                # Navegación con flechas
+                elif evento.key == pygame.K_LEFT and indice_actual > 0:
+                    indice_actual -= 1
+                    modo = 'movimiento'
+                elif evento.key == pygame.K_RIGHT and indice_actual < len(piezas_disponibles) - 1:
+                    indice_actual += 1
+                    modo = 'movimiento'
         
         reloj.tick(60)
 
@@ -393,7 +445,7 @@ def dibujar_pieza_tutorial(pantalla, pieza, x_offset, y_offset, cache_imagenes, 
 
 
 def dibujar_tabla_stats(pantalla, pieza, x, y, fuente_titulo, fuente_texto):
-    """Dibuja la tabla de estadísticas."""
+    """Dibuja la tabla de estadísticas SIN el nombre de la pieza."""
     
     escala = get_escala_tutorial()
     
@@ -402,23 +454,14 @@ def dibujar_tabla_stats(pantalla, pieza, x, y, fuente_titulo, fuente_texto):
     icono_atk = cargar_icono_svg("damage.svg", (24, 24))
     icono_agi = cargar_icono_svg("turn-over.svg", (24, 24))
     
-    # Título
-    texto_titulo = fuente_titulo.render(pieza.nombre.upper(), True, (255, 215, 0))
-    pantalla.blit(texto_titulo, (x, y))
-    
-    # Línea divisoria
-    linea_y = y + int(35 * escala)
-    linea_ancho = int(200 * escala)
-    pygame.draw.line(pantalla, (150, 150, 150), (x, linea_y), (x + linea_ancho, linea_y), 2)
-    
-    # Stats
+    # Stats directamente (sin título ni línea)
     stats = [
         (icono_hp, str(pieza.hp_max)),
         (icono_atk, str(pieza.atk)),
         (icono_agi, str(pieza.agi)),
     ]
     
-    y_actual = y + int(50 * escala)
+    y_actual = y
     espacio_stat = int(35 * escala)
     offset_texto = int(35 * escala)
     
