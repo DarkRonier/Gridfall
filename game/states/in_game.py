@@ -1,6 +1,6 @@
 """
 Estado: EN JUEGO
-Maneja toda la lógica del juego principal
+Maneja toda la lÃ³gica del juego principal
 """
 
 import copy
@@ -29,7 +29,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
         - ataques_resaltados
         - ganador
         - animacion_en_curso
-        - superficie_blur (para confirmación)
+        - superficie_blur (para confirmaciÃ³n)
     """
     
     # Estado local del juego
@@ -55,12 +55,16 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
         if len(historial_turnos) > 5:
             historial_turnos.pop(0)
         
+        
+        # CRÍTICO: Verificar ganador ANTES de calcular siguiente turno
+        resultado = verificar_ganador(turn_manager.piezas_en_juego)
+        if resultado is not None:
+            ganador = resultado
+            return 'fin_del_juego'
+        
+        # Solo calcular siguiente turno si el juego no ha terminado
         if pieza_activa:
             pieza_activa.calcular_siguiente_turno(turn_manager.reloj)
-            resultado = verificar_ganador(turn_manager.piezas_en_juego)
-            if resultado is not None:
-                ganador = resultado
-                return 'fin_del_juego'
         
         pieza_activa = None
         movimientos_resaltados = []
@@ -71,7 +75,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
     reloj = pygame.time.Clock()
     
     while True:
-        # --- Actualización de estado ---
+        # --- ActualizaciÃ³n de estado ---
         if animacion_en_curso:
             terminada = animacion_en_curso.update()
             if terminada:
@@ -95,6 +99,20 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                         finalizar_turno()
                 
                 elif isinstance(animacion_en_curso, (MeleeAttackAnimation, ProjectileAnimation)):
+                    # CRÃTICO: Verificar ganador INMEDIATAMENTE después del ataque
+                    resultado = verificar_ganador(turn_manager.piezas_en_juego)
+                    if resultado is not None:
+                        ganador = resultado
+                        animacion_en_curso = None
+                        return ('fin_del_juego', {
+                            'pieza_activa': pieza_activa,
+                            'movimientos_resaltados': movimientos_resaltados,
+                            'ataques_resaltados': ataques_resaltados,
+                            'ganador': ganador,
+                            'animacion_en_curso': None,
+                            'superficie_blur': superficie_blur
+                        })
+                    
                     if entidad_ended.tipo_turno == 2 and not entidad_ended.ha_movido:
                         movimientos_resaltados = calcular_casillas_posibles(entidad_ended, tablero)
                         if not movimientos_resaltados:
@@ -146,13 +164,13 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             if evento.type == pygame.MOUSEBUTTONDOWN and pieza_activa and not animacion_en_curso:
                 pos_clic = evento.pos
                 
-                # Obtener rectángulos de botones con offsets aplicados
+                # Obtener rectÃ¡ngulos de botones con offsets aplicados
                 BOTON_VOLVER = obtener_boton_volver()
                 BOTON_DESHACER = obtener_boton_deshacer()
                 BOTON_PASAR = obtener_boton_pasar()
                 
                 if BOTON_VOLVER.collidepoint(pos_clic):
-                    print("Volviendo al menú principal...")
+                    print("Volviendo al menÃº principal...")
                     copia_pantalla = pantalla.copy()
                     ancho_real = pantalla.get_width()
                     alto_real = pantalla.get_height()
@@ -172,10 +190,10 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                 
                 elif BOTON_DESHACER.collidepoint(pos_clic):
                     if historial_turnos:
-                        print("Deshaciendo el último movimiento...")
+                        print("Deshaciendo el Ãºltimo movimiento...")
                         estado_anterior = historial_turnos.pop()
                         
-                        # Restaurar datos básicos
+                        # Restaurar datos bÃ¡sicos
                         tablero[:] = estado_anterior['tablero']
                         turn_manager.piezas_en_juego = estado_anterior['piezas_en_juego'][:]
                         turn_manager.reloj = estado_anterior['reloj']
@@ -210,19 +228,19 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                     print("Pasando turno...")
                     finalizar_turno()
                 
-                # CRÍTICO: Convertir coordenadas de mouse a casilla del tablero
+                # CRÃTICO: Convertir coordenadas de mouse a casilla del tablero
                 # Restar offsets ANTES de calcular la casilla
                 else:
                     # Coordenadas relativas al tablero (sin offsets)
                     x_relativo = pos_clic[0] - constants.OFFSET_X
                     y_relativo = pos_clic[1] - constants.OFFSET_Y - constants.UI_ALTO
                     
-                    # Verificar que el clic está dentro del tablero
+                    # Verificar que el clic estÃ¡ dentro del tablero
                     if x_relativo >= 0 and y_relativo >= 0:
                         col_clic = x_relativo // constants.TAMANO_CASILLA
                         fila_clic = y_relativo // constants.TAMANO_CASILLA
                         
-                        # Verificar que la casilla está dentro de los límites
+                        # Verificar que la casilla estÃ¡ dentro de los lÃ­mites
                         if 0 <= fila_clic < constants.FILAS and 0 <= col_clic < constants.COLUMNAS:
                             if (fila_clic, col_clic) in ataques_resaltados:
                                 if not pieza_activa.ha_atacado:
@@ -235,7 +253,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                         
                                         pieza_atacada.recibir_dano(pieza_activa.atk)
                                         
-                                        # Calcular posición en píxeles CON offsets
+                                        # Calcular posiciÃ³n en pÃ­xeles CON offsets
                                         centro_x = constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2
                                         centro_y = constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2
                                         pos_damage = (centro_x, centro_y + (0.05 * constants.TAMANO_CASILLA))
@@ -254,7 +272,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                     ataques_resaltados = []
                                     movimientos_resaltados = []
                                     
-                                    # Calcular posiciones en píxeles CON offsets
+                                    # Calcular posiciones en pÃ­xeles CON offsets
                                     start_px = (constants.OFFSET_X + pieza_activa.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                                                constants.OFFSET_Y + pieza_activa.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     target_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
@@ -271,7 +289,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                 if not pieza_activa.ha_movido:
                                     vieja_fila, vieja_col = pieza_activa.posicion
                                     
-                                    # Calcular posiciones en píxeles CON offsets
+                                    # Calcular posiciones en pÃ­xeles CON offsets
                                     start_px = (constants.OFFSET_X + vieja_col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                                                constants.OFFSET_Y + vieja_fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     end_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
@@ -314,7 +332,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             
             imagen_draw = imagen_original.copy()
             imagen_draw.set_alpha(alpha)
-            # Calcular posición CON offsets
+            # Calcular posiciÃ³n CON offsets
             centro_x = int(constants.OFFSET_X + pieza.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2)
             centro_y = int(constants.OFFSET_Y + pieza.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
             rect_imagen = imagen_draw.get_rect(center=(centro_x, centro_y))

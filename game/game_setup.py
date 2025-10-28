@@ -21,19 +21,6 @@ def crear_nuevo_juego():
                 soldado.posicion = (1, pos)
                 tablero[1][pos] = soldado
 
-    """
-    soldados = ([0, 1, 2, 3, 4, 5, 6, 7])  # Posiciones de los soldados
-    for i in range(2):
-        soldados_copy = soldados.copy()
-        for j in range(6):
-            indice = random.randrange(len(soldados_copy))
-            pos = soldados_copy.pop(indice)
-
-            soldado = crear_soldado(jugador= i+1)
-            soldado.posicion = (6 if i == 0 else 1, pos)
-            tablero[6 if i == 0 else 1][pos] = soldado
-    """
-
     paladins = ([2, 5])  # Posiciones de los paladines
     for i, pos in enumerate(paladins):
         for j in range(2):
