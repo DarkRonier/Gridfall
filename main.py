@@ -16,6 +16,7 @@ from game.menu import mostrar_menu
 from game.tutorial import mostrar_tutorial
 from game.game_setup import crear_nuevo_juego
 from game.turn_manager import TurnManager
+from game.turn_queue import TurnQueue
 from game.assets import cargar_svgs
 from game.audio import init_audio
 
@@ -137,8 +138,8 @@ def main():
         pantalla = pygame.display.set_mode((ancho, alto), pygame.FULLSCREEN)
         print(f"[INICIO] Modo fullscreen: {ancho}x{alto}, escala={escala:.2f}")
     else:
-        constants.actualizar_dimensiones_ventana(constants.ANCHO_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
-        pantalla = pygame.display.set_mode((constants.ANCHO_BASE, constants.ALTO_BASE))
+        constants.actualizar_dimensiones_ventana(constants.ANCHO_TOTAL_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
+        pantalla = pygame.display.set_mode((constants.ANCHO_TOTAL_BASE, constants.ALTO_BASE))
         print(f"[INICIO] Modo ventana: {constants.ANCHO_BASE}x{constants.ALTO_BASE}")
     
     pygame.display.set_caption(NOMBRE_VENTANA)
@@ -160,6 +161,7 @@ def main():
     # Variables de juego (se inicializan cuando empieza una partida)
     tablero = None
     turn_manager = None
+    turn_queue = None
     historial_turnos = []
     numeros_flotantes = []
     animaciones_muerte = []
@@ -186,6 +188,7 @@ def main():
             if estado_juego == 'en_juego':
                 tablero = crear_nuevo_juego()
                 turn_manager = TurnManager(tablero)
+                turn_queue = TurnQueue(turn_manager)
                 historial_turnos = []
                 numeros_flotantes = []
                 animaciones_muerte = []
@@ -206,6 +209,7 @@ def main():
                 pantalla, 
                 tablero, 
                 turn_manager,
+                turn_queue,
                 historial_turnos,
                 numeros_flotantes,
                 animaciones_muerte,

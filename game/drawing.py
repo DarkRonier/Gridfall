@@ -2,6 +2,7 @@ import pygame
 from game import constants  # ← CAMBIO: Importar el módulo completo
 from .assets import crear_superficie_pieza
 from game.effects import MeleeAttackAnimation, ProjectileAnimation, MoveAnimation
+from game.turn_queue_display import dibujar_panel_turnos
 
 def dibujar_tablero(pantalla):
     """Dibuja las casillas del tablero."""
@@ -104,7 +105,7 @@ def dibujar_resaltados(pantalla, casillas_movimiento, casillas_ataque, pieza_act
 def dibujar_ui(pantalla, fuente, pieza_activa):
     """Dibuja elementos de la interfaz, como el botón de pasar turno."""
     # Fondo del UI (CON OFFSETS)
-    fondo_ui = pygame.Rect(constants.OFFSET_X, constants.OFFSET_Y, constants.ANCHO_TABLERO, constants.UI_ALTO)
+    fondo_ui = pygame.Rect(constants.OFFSET_X, constants.OFFSET_Y, constants.ANCHO_TABLERO + constants.ANCHO_PANEL_TURNOS, constants.UI_ALTO)
     pygame.draw.rect(pantalla, (30, 30, 30), fondo_ui)
 
     # Actualizar las posiciones de los botones con offsets
