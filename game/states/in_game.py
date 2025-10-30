@@ -1,6 +1,6 @@
 """
 Estado: EN JUEGO
-Maneja toda la lÃ³gica del juego principal
+Maneja toda la logica del juego principal
 """
 
 import copy
@@ -9,7 +9,7 @@ from game import constants
 from game.drawing import (dibujar_tablero, dibujar_piezas, dibujar_resaltados, dibujar_ui,
                           dibujar_numeros_flotantes, dibujar_animacion_activa, dibujar_proyectiles,
                           dibujar_borde_turno, obtener_boton_volver, obtener_boton_deshacer, obtener_boton_pasar)
-from game.turn_queue_display import dibujar_panel_turnos
+from game.turn_queue_display import dibujar_panel_turnos, get_animator
 from game.logic import calcular_casillas_posibles, calcular_ataques_posibles, verificar_ganador
 from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
                           FadeOutAnimation, ProjectileAnimation)
@@ -30,7 +30,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
         - ataques_resaltados
         - ganador
         - animacion_en_curso
-        - superficie_blur (para confirmaciÃ³n)
+        - superficie_blur
     """
     
     # Estado local del juego
@@ -60,6 +60,9 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
         # Avanzar la cola de turnos
         turn_queue.advance_turn()
         
+        animator = get_animator()
+        animator.iniciar_animacion_avanzar(turn_queue.queue)
+
         pieza_activa = None
         movimientos_resaltados = []
         ataques_resaltados = []
@@ -203,8 +206,6 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                         
                         # Descartamos el estado del turno actual (inicio del turno actual)
                         historial_turnos.pop()
-                        
-                        # Restauramos el estado del turno anterior (inicio del turno anterior)
                         estado_anterior = historial_turnos.pop()
                         
                         # Restaurar datos básicos
@@ -236,6 +237,9 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                                 pieza = tablero[pos[0]][pos[1]]
                                 if pieza and pieza.esta_viva():
                                     turn_queue.queue.append(pieza)
+                        
+                        animator = get_animator()
+                        animator.resetear(turn_queue.queue)
                         
                         # Resetear estado visual
                         pieza_activa = None
@@ -290,6 +294,8 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                                                 nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
                                                 animaciones_muerte.append(nueva_anim_muerte)
                                                 tablero[fila_clic][col_clic] = None
+                                                animator = get_animator()
+                                                animator.iniciar_animacion_muerte(pieza_atacada)
                                     
                                     pieza_activa.ha_atacado = True
                                     ataques_resaltados = []

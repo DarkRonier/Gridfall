@@ -7,7 +7,7 @@ ALTO_BASE = 870
 FILAS, COLUMNAS = 9, 8
 
 # --- PANEL DE COLA DE TURNOS ---
-ANCHO_PANEL_TURNOS_BASE = int((ANCHO_BASE / COLUMNAS) * 1.75)  # 1.75 casillas de ancho
+ANCHO_PANEL_TURNOS_BASE = int((ANCHO_BASE / COLUMNAS) * 1.9)  # 1.75 casillas de ancho
 ANCHO_TOTAL_BASE = ANCHO_BASE + ANCHO_PANEL_TURNOS_BASE  # Ancho total de la ventana
 
 # --- DIMENSIONES ACTUALES (se actualizan dinámicamente) ---
