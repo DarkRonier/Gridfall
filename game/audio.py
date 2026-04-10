@@ -1,5 +1,6 @@
 import pygame
 import os
+import sys
 
 class AudioManager:
     """Gestiona todos los efectos de sonido y música del juego."""
@@ -16,10 +17,12 @@ class AudioManager:
         # Diccionario para almacenar todos los sonidos
         self.sounds = {}
         
-        # Ruta base para los sonidos (relativa al directorio donde se ejecuta el script)
-        # Obtener la ruta absoluta del directorio del proyecto
-        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.sounds_path = os.path.join(script_dir, "assets", "sounds")
+        # Ruta base para los sonidos compatible con ejecutable PyInstaller
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.sounds_path = os.path.join(base_path, "assets", "sounds")
         
         print(f"Buscando sonidos en: {self.sounds_path}")
         
