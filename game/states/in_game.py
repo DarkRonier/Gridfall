@@ -1,23 +1,25 @@
 """
 Estado: EN JUEGO
-Maneja toda la lógica del juego principal
+Maneja toda la logica del juego principal
 """
 
 import copy
 import pygame
+import random
 from game import constants
 from game.drawing import (dibujar_tablero, dibujar_piezas, dibujar_resaltados, dibujar_ui,
                           dibujar_numeros_flotantes, dibujar_animacion_activa, dibujar_proyectiles,
                           dibujar_borde_turno, obtener_boton_volver, obtener_boton_deshacer, obtener_boton_pasar)
+from game.turn_queue_display import dibujar_panel_turnos, get_animator
 from game.logic import calcular_casillas_posibles, calcular_ataques_posibles, verificar_ganador
 from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
                           FadeOutAnimation, ProjectileAnimation)
 from game.audio import get_audio
 
 
-def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos, 
+def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, historial_turnos, 
                              numeros_flotantes, animaciones_muerte, CACHE_IMAGENES,
-                             fuente_hp, fuente_damage):
+                             fuente_hp, fuente_damage, datos_persistentes=None):
     """
     Maneja el estado del juego principal.
     
@@ -29,49 +31,67 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
         - ataques_resaltados
         - ganador
         - animacion_en_curso
-        - superficie_blur (para confirmación)
+        - superficie_blur
     """
-    
-    # Estado local del juego
-    pieza_activa = None
-    movimientos_resaltados = []
-    ataques_resaltados = []
-    ganador = None
-    animacion_en_curso = None
-    superficie_blur = None
+    # Recuperar datos persistentes si existen
+    if datos_persistentes:
+        pieza_activa = datos_persistentes.get('pieza_activa')
+        movimientos_resaltados = datos_persistentes.get('movimientos_resaltados', [])
+        ataques_resaltados = datos_persistentes.get('ataques_resaltados', [])
+        ganador = datos_persistentes.get('ganador')
+        animacion_en_curso = datos_persistentes.get('animacion_en_curso')
+        superficie_blur = datos_persistentes.get('superficie_blur')
+        ai_agent = datos_persistentes.get('ai_agent')
+    else:
+        pieza_activa = None
+        movimientos_resaltados = []
+        ataques_resaltados = []
+        ganador = None
+        animacion_en_curso = None
+        superficie_blur = None
+        ai_agent = None
     
     audio = get_audio()
+
+    def obtener_datos_actuales():
+        """Devuelve un diccionario con los datos actuales del estado."""
+        return {
+            'pieza_activa': pieza_activa,
+            'movimientos_resaltados': movimientos_resaltados,
+            'ataques_resaltados': ataques_resaltados,
+            'ganador': ganador,
+            'animacion_en_curso': animacion_en_curso,
+            'superficie_blur': superficie_blur,
+            'ai_agent': ai_agent
+        }
     
     def finalizar_turno():
         """Finaliza el turno actual y prepara el siguiente."""
         nonlocal pieza_activa, movimientos_resaltados, ataques_resaltados, ganador
         
-        estado_actual = {
-            'tablero': copy.deepcopy(tablero),
-            'piezas_en_juego': copy.deepcopy(turn_manager.piezas_en_juego),
-            'reloj': turn_manager.reloj,
-        }
-        historial_turnos.append(estado_actual)
-        if len(historial_turnos) > 5:
-            historial_turnos.pop(0)
+        resultado = verificar_ganador(turn_manager.piezas_en_juego)
+        if resultado is not None:
+            ganador = resultado
+            return 'fin_del_juego'
         
         if pieza_activa:
             pieza_activa.calcular_siguiente_turno(turn_manager.reloj)
-            resultado = verificar_ganador(turn_manager.piezas_en_juego)
-            if resultado is not None:
-                ganador = resultado
-                return 'fin_del_juego'
         
+        turn_queue.advance_turn()
+        animator = get_animator()
+        animator.iniciar_animacion_avanzar(turn_queue.queue)
+
         pieza_activa = None
         movimientos_resaltados = []
         ataques_resaltados = []
         return 'en_juego'
     
-    # Loop principal del estado
     reloj = pygame.time.Clock()
+
+    delay_ia = 0
     
     while True:
-        # --- Actualización de estado ---
+        # --- Gestion de animaciones ---
         if animacion_en_curso:
             terminada = animacion_en_curso.update()
             if terminada:
@@ -83,31 +103,24 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                         if not ataques_resaltados:
                             nuevo_estado = finalizar_turno()
                             if nuevo_estado == 'fin_del_juego':
-                                return (nuevo_estado, {
-                                    'pieza_activa': pieza_activa,
-                                    'movimientos_resaltados': movimientos_resaltados,
-                                    'ataques_resaltados': ataques_resaltados,
-                                    'ganador': ganador,
-                                    'animacion_en_curso': animacion_en_curso,
-                                    'superficie_blur': superficie_blur
-                                })
+                                return (nuevo_estado, obtener_datos_actuales())
                     else:
                         finalizar_turno()
                 
                 elif isinstance(animacion_en_curso, (MeleeAttackAnimation, ProjectileAnimation)):
+                    resultado = verificar_ganador(turn_manager.piezas_en_juego)
+                    turn_queue.remove_dead_pieces()
+                    if resultado is not None:
+                        ganador = resultado
+                        animacion_en_curso = None
+                        return ('fin_del_juego', obtener_datos_actuales())
+                    
                     if entidad_ended.tipo_turno == 2 and not entidad_ended.ha_movido:
                         movimientos_resaltados = calcular_casillas_posibles(entidad_ended, tablero)
                         if not movimientos_resaltados:
                             nuevo_estado = finalizar_turno()
                             if nuevo_estado == 'fin_del_juego':
-                                return (nuevo_estado, {
-                                    'pieza_activa': pieza_activa,
-                                    'movimientos_resaltados': movimientos_resaltados,
-                                    'ataques_resaltados': ataques_resaltados,
-                                    'ganador': ganador,
-                                    'animacion_en_curso': animacion_en_curso,
-                                    'superficie_blur': superficie_blur
-                                })
+                                return (nuevo_estado, obtener_datos_actuales())
                     else:
                         finalizar_turno()
                 
@@ -121,38 +134,149 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             numero.update()
         numeros_flotantes[:] = [n for n in numeros_flotantes if n.lifetime > 0]
         
-        if pieza_activa is None and not animacion_en_curso:
-            while pieza_activa is None:
-                pieza_encontrada = turn_manager.avanzar_reloj_y_obtener_pieza()
-                if pieza_encontrada:
-                    pieza_activa = pieza_encontrada
-                    pieza_activa.reiniciar_estado_turno()
-                    movimientos_resaltados = calcular_casillas_posibles(pieza_activa, tablero)
-                    ataques_resaltados = calcular_ataques_posibles(pieza_activa, tablero)
-                    break
+        # Comprobar fin del juego de forma redundante en cada ciclo.
+        resultado = verificar_ganador(turn_manager.piezas_en_juego)
+        if resultado is not None:
+            ganador = resultado
+            return ('fin_del_juego', obtener_datos_actuales())
         
+        if pieza_activa is None and not animacion_en_curso:
+            pieza_encontrada = turn_queue.get_current_piece()
+            if pieza_encontrada:
+                pieza_activa = pieza_encontrada
+                pieza_activa.reiniciar_estado_turno()
+                
+                estado_actual = {
+                    'tablero': copy.deepcopy(tablero),
+                    'piezas_en_juego': copy.deepcopy(turn_manager.piezas_en_juego),
+                    'reloj': turn_manager.reloj,
+                    'cola_turnos': [p.posicion for p in turn_queue.queue if p and p.esta_viva()],
+                }
+                historial_turnos.append(estado_actual)
+                if len(historial_turnos) > 5:
+                    historial_turnos.pop(0)
+                
+                movimientos_resaltados = calcular_casillas_posibles(pieza_activa, tablero)
+                ataques_resaltados = calcular_ataques_posibles(pieza_activa, tablero)
+
+                delay_ia = 30
+            else:
+                resultado = verificar_ganador(turn_manager.piezas_en_juego)
+                if resultado is not None:
+                    ganador = resultado
+                    return ('fin_del_juego', obtener_datos_actuales())
+                # No hay pieza activa válida: salir del bucle para procesar eventos y dibujar.
+                continue
+        
+        # --- Lógica IA ---
+        es_turno_ia = (ai_agent is not None and pieza_activa is not None and pieza_activa.jugador == ai_agent.team_id and not animacion_en_curso)
+        
+        if es_turno_ia:
+            if delay_ia > 0:
+                delay_ia -= 1
+            else:
+                accion = ai_agent.calcular_turno(
+                    tablero,
+                    pieza_activa,
+                    movimientos_resaltados,
+                    ataques_resaltados
+                )
+
+                if not isinstance(accion, dict) or 'tipo' not in accion:
+                    print("[IA] Acción inválida o nula. Pasando turno.")
+                    accion = {'tipo': 'pasar'}
+
+                if accion['tipo'] == 'pasar':
+                    print("IA decide pasar el turno.")
+                    finalizar_turno()
+
+                elif accion['tipo'] == 'atacar' and pieza_activa.ha_atacado:
+                    print("[IA] Acción inválida: ya atacó este turno. Forzando movimiento o pasando.")
+                    if pieza_activa.tipo_turno == 2 and not pieza_activa.ha_movido:
+                        movimiento_destino = movimientos_resaltados[0] if movimientos_resaltados else None
+                        if movimiento_destino is not None:
+                            accion = {'tipo': 'mover', 'destino': movimiento_destino}
+                        else:
+                            accion = {'tipo': 'pasar'}
+                    else:
+                        accion = {'tipo': 'pasar'}
+
+                if accion['tipo'] == 'mover':
+                    dest_f, dest_c = accion['destino']
+                    vieja_fila, vieja_col = pieza_activa.posicion
+                    
+                    start_px = (constants.OFFSET_X + vieja_col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                               constants.OFFSET_Y + vieja_fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                    end_px = (constants.OFFSET_X + dest_c * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                             constants.OFFSET_Y + dest_f * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                    
+                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
+                    audio.play_move()
+                    
+                    tablero[vieja_fila][vieja_col] = None
+                    tablero[dest_f][dest_c] = pieza_activa
+                    pieza_activa.posicion = (dest_f, dest_c)
+                    pieza_activa.ha_movido = True
+                    
+                    movimientos_resaltados = []
+                    ataques_resaltados = []
+                    delay_ia = 20
+                
+                elif accion['tipo'] == 'atacar':
+                    obj_f, obj_c = accion['objetivo']
+                    pieza_atacada = tablero[obj_f][obj_c]
+                    
+                    def aplicar_dano_callback():
+
+                        if pieza_activa.tipo_ataque == 'ranged': audio.play_ranged_impact()
+                        pieza_atacada.recibir_dano(pieza_activa.atk)
+                        
+                        centro_x = constants.OFFSET_X + obj_c * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2
+                        centro_y = constants.OFFSET_Y + obj_f * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2
+                        pos_damage = (centro_x, centro_y + (0.05 * constants.TAMANO_CASILLA))
+                        numeros_flotantes.append(DamageText(pieza_activa.atk, pos_damage, fuente_damage))
+
+                        if not pieza_atacada.esta_viva():
+                            audio.play_death()
+                            if pieza_atacada in turn_manager.piezas_en_juego:
+                                turn_manager.piezas_en_juego.remove(pieza_atacada)
+                                nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
+                                animaciones_muerte.append(nueva_anim_muerte)
+                                tablero[obj_f][obj_c] = None
+                                get_animator().iniciar_animacion_muerte(pieza_atacada)
+                    
+                    pieza_activa.ha_atacado = True
+                    ataques_resaltados = []
+                    movimientos_resaltados = []
+
+                    start_px = (constants.OFFSET_X + pieza_activa.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                               constants.OFFSET_Y + pieza_activa.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                    target_px = (constants.OFFSET_X + obj_c * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                                constants.OFFSET_Y + obj_f * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+                    
+                    if pieza_activa.tipo_ataque == 'melee':
+                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
+                        audio.play_melee_attack()
+                    else:
+                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
+                        audio.play_ranged_cast()
+
         # --- Manejo de Eventos ---
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                return ('saliendo', {
-                    'pieza_activa': pieza_activa,
-                    'movimientos_resaltados': movimientos_resaltados,
-                    'ataques_resaltados': ataques_resaltados,
-                    'ganador': ganador,
-                    'animacion_en_curso': animacion_en_curso,
-                    'superficie_blur': superficie_blur
-                })
+                return ('saliendo', obtener_datos_actuales())
             
-            if evento.type == pygame.MOUSEBUTTONDOWN and pieza_activa and not animacion_en_curso:
+            input_bloqueado = es_turno_ia or animacion_en_curso is not None
+            
+            if evento.type == pygame.MOUSEBUTTONDOWN and pieza_activa and not input_bloqueado                                       :
                 pos_clic = evento.pos
                 
-                # Obtener rectángulos de botones con offsets aplicados
                 BOTON_VOLVER = obtener_boton_volver()
                 BOTON_DESHACER = obtener_boton_deshacer()
                 BOTON_PASAR = obtener_boton_pasar()
                 
                 if BOTON_VOLVER.collidepoint(pos_clic):
-                    print("Volviendo al menú principal...")
+                    print("Volviendo al menu principal...")
                     copia_pantalla = pantalla.copy()
                     ancho_real = pantalla.get_width()
                     alto_real = pantalla.get_height()
@@ -171,8 +295,12 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                     })
                 
                 elif BOTON_DESHACER.collidepoint(pos_clic):
-                    if historial_turnos:
+                    # Necesitamos al menos 2 estados: el turno actual y el anterior
+                    if len(historial_turnos) >= 2:
                         print("Deshaciendo el último movimiento...")
+                        
+                        # Descartamos el estado del turno actual (inicio del turno actual)
+                        historial_turnos.pop()
                         estado_anterior = historial_turnos.pop()
                         
                         # Restaurar datos básicos
@@ -196,6 +324,17 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                 if pieza is not None and pieza.hp <= 0:
                                     tablero[fila][col] = None
                         
+                        posiciones_cola = estado_anterior.get('cola_turnos', [])
+                        turn_queue.queue = []
+                        for pos in posiciones_cola:
+                            if 0 <= pos[0] < constants.FILAS and 0 <= pos[1] < constants.COLUMNAS:
+                                pieza = tablero[pos[0]][pos[1]]
+                                if pieza and pieza.esta_viva():
+                                    turn_queue.queue.append(pieza)
+                        
+                        animator = get_animator()
+                        animator.resetear(turn_queue.queue)
+                        
                         # Resetear estado visual
                         pieza_activa = None
                         animacion_en_curso = None
@@ -204,25 +343,23 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                         movimientos_resaltados.clear()
                         ataques_resaltados.clear()
                     else:
-                        print("No hay movimientos para deshacer.")
+                        print("No hay suficientes movimientos para deshacer.")
                 
                 elif BOTON_PASAR.collidepoint(pos_clic):
                     print("Pasando turno...")
                     finalizar_turno()
                 
-                # CRÍTICO: Convertir coordenadas de mouse a casilla del tablero
-                # Restar offsets ANTES de calcular la casilla
                 else:
                     # Coordenadas relativas al tablero (sin offsets)
                     x_relativo = pos_clic[0] - constants.OFFSET_X
                     y_relativo = pos_clic[1] - constants.OFFSET_Y - constants.UI_ALTO
                     
-                    # Verificar que el clic está dentro del tablero
+                    # Verificar que el clic estÃ¡ dentro del tablero
                     if x_relativo >= 0 and y_relativo >= 0:
                         col_clic = x_relativo // constants.TAMANO_CASILLA
                         fila_clic = y_relativo // constants.TAMANO_CASILLA
                         
-                        # Verificar que la casilla está dentro de los límites
+                        # Verificar que la casilla estÃ¡ dentro de los lÃ­mites
                         if 0 <= fila_clic < constants.FILAS and 0 <= col_clic < constants.COLUMNAS:
                             if (fila_clic, col_clic) in ataques_resaltados:
                                 if not pieza_activa.ha_atacado:
@@ -235,7 +372,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                         
                                         pieza_atacada.recibir_dano(pieza_activa.atk)
                                         
-                                        # Calcular posición en píxeles CON offsets
+                                        # Calcular posiciÃ³n en pÃ­xeles CON offsets
                                         centro_x = constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2
                                         centro_y = constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2
                                         pos_damage = (centro_x, centro_y + (0.05 * constants.TAMANO_CASILLA))
@@ -249,12 +386,14 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                                 nueva_anim_muerte = FadeOutAnimation(pieza_atacada)
                                                 animaciones_muerte.append(nueva_anim_muerte)
                                                 tablero[fila_clic][col_clic] = None
+                                                animator = get_animator()
+                                                animator.iniciar_animacion_muerte(pieza_atacada)
                                     
                                     pieza_activa.ha_atacado = True
                                     ataques_resaltados = []
                                     movimientos_resaltados = []
                                     
-                                    # Calcular posiciones en píxeles CON offsets
+                                    # Calcular posiciones en pÃ­xeles CON offsets
                                     start_px = (constants.OFFSET_X + pieza_activa.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                                                constants.OFFSET_Y + pieza_activa.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     target_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
@@ -271,7 +410,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
                                 if not pieza_activa.ha_movido:
                                     vieja_fila, vieja_col = pieza_activa.posicion
                                     
-                                    # Calcular posiciones en píxeles CON offsets
+                                    # Calcular posiciones en pÃ­xeles CON offsets
                                     start_px = (constants.OFFSET_X + vieja_col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                                                constants.OFFSET_Y + vieja_fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     end_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
@@ -314,7 +453,6 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
             
             imagen_draw = imagen_original.copy()
             imagen_draw.set_alpha(alpha)
-            # Calcular posición CON offsets
             centro_x = int(constants.OFFSET_X + pieza.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2)
             centro_y = int(constants.OFFSET_Y + pieza.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
             rect_imagen = imagen_draw.get_rect(center=(centro_x, centro_y))
@@ -322,6 +460,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, historial_turnos,
         
         dibujar_numeros_flotantes(pantalla, numeros_flotantes)
         dibujar_ui(pantalla, pygame.font.SysFont("Arial", 20), pieza_activa)
+        dibujar_panel_turnos(pantalla, turn_queue, CACHE_IMAGENES, pygame.font.SysFont("Arial", int(16 * constants.ESCALA_GLOBAL)))
         
         pygame.display.flip()
         reloj.tick(constants.FPS)

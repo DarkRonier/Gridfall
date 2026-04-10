@@ -16,8 +16,10 @@ from game.menu import mostrar_menu
 from game.tutorial import mostrar_tutorial
 from game.game_setup import crear_nuevo_juego
 from game.turn_manager import TurnManager
+from game.turn_queue import TurnQueue
 from game.assets import cargar_svgs
 from game.audio import init_audio
+from game.ai_rival import AIController
 
 # Importar estados del juego
 from game.states import (
@@ -137,8 +139,8 @@ def main():
         pantalla = pygame.display.set_mode((ancho, alto), pygame.FULLSCREEN)
         print(f"[INICIO] Modo fullscreen: {ancho}x{alto}, escala={escala:.2f}")
     else:
-        constants.actualizar_dimensiones_ventana(constants.ANCHO_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
-        pantalla = pygame.display.set_mode((constants.ANCHO_BASE, constants.ALTO_BASE))
+        constants.actualizar_dimensiones_ventana(constants.ANCHO_TOTAL_BASE, constants.ALTO_BASE, 1.0, 0, 0, False)
+        pantalla = pygame.display.set_mode((constants.ANCHO_TOTAL_BASE, constants.ALTO_BASE))
         print(f"[INICIO] Modo ventana: {constants.ANCHO_BASE}x{constants.ALTO_BASE}")
     
     pygame.display.set_caption(NOMBRE_VENTANA)
@@ -160,6 +162,7 @@ def main():
     # Variables de juego (se inicializan cuando empieza una partida)
     tablero = None
     turn_manager = None
+    turn_queue = None
     historial_turnos = []
     numeros_flotantes = []
     animaciones_muerte = []
@@ -175,20 +178,30 @@ def main():
         'superficie_blur': None
     }
     
+    reloj_global = pygame.time.Clock()
     # --- LOOP PRINCIPAL ---
     while True:
+        reloj_global.tick(60)
         
         # ===== MENÚ PRINCIPAL =====
         if estado_juego == 'menu_principal':
             estado_juego, pantalla, es_fullscreen = mostrar_menu(pantalla, fuente_menu, es_fullscreen)
-            
+        
+            gamemode_ai = estado_juego in ('en_juego_vs_ia', 'en_juego_ia')
+
             # Si el usuario inicia un juego nuevo, inicializar todo
-            if estado_juego == 'en_juego':
+            if estado_juego == 'en_juego' or gamemode_ai:
                 tablero = crear_nuevo_juego()
                 turn_manager = TurnManager(tablero)
+                turn_queue = TurnQueue(turn_manager)
                 historial_turnos = []
                 numeros_flotantes = []
                 animaciones_muerte = []
+
+                # Configurar IA
+                ai_agent = None
+                if gamemode_ai:
+                    ai_agent = AIController(team_id=2)
                 
                 # Resetear datos del estado en_juego
                 datos_en_juego = {
@@ -197,8 +210,12 @@ def main():
                     'ataques_resaltados': [],
                     'ganador': None,
                     'animacion_en_curso': None,
-                    'superficie_blur': None
+                    'superficie_blur': None,
+                    'ai_agent': ai_agent
                 }
+
+                estado_juego = 'en_juego'
+                continue
         
         # ===== EN JUEGO =====
         elif estado_juego == 'en_juego':
@@ -206,12 +223,14 @@ def main():
                 pantalla, 
                 tablero, 
                 turn_manager,
+                turn_queue,
                 historial_turnos,
                 numeros_flotantes,
                 animaciones_muerte,
                 CACHE_IMAGENES,
                 fuente_hp,
-                fuente_damage
+                fuente_damage,
+                datos_en_juego
             )
         
         # ===== CONFIRMACIÓN DE SALIR =====

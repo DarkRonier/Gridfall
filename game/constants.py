@@ -6,13 +6,18 @@ ANCHO_BASE = 720
 ALTO_BASE = 870
 FILAS, COLUMNAS = 9, 8
 
+# --- PANEL DE COLA DE TURNOS ---
+ANCHO_PANEL_TURNOS_BASE = int((ANCHO_BASE / COLUMNAS) * 1.9)  # 1.75 casillas de ancho
+ANCHO_TOTAL_BASE = ANCHO_BASE + ANCHO_PANEL_TURNOS_BASE  # Ancho total de la ventana
+
 # --- DIMENSIONES ACTUALES (se actualizan dinámicamente) ---
 UI_ALTO = UI_ALTO_BASE
 ANCHO_TABLERO = ANCHO_BASE
 ALTO_TABLERO = ANCHO_BASE + 90
 TAMANO_CASILLA = ANCHO_BASE // COLUMNAS
+ANCHO_PANEL_TURNOS = ANCHO_PANEL_TURNOS_BASE
 
-ANCHO_VENTANA = ANCHO_BASE
+ANCHO_VENTANA = ANCHO_TOTAL_BASE
 ALTO_VENTANA = ALTO_BASE
 
 NOMBRE_VENTANA = "Gridfall"
@@ -41,6 +46,12 @@ COLOR_HP_FONDO = (70, 80, 70) # Gris verdoso oscuro
 COLOR_HP_ALTA = (40, 170, 90)  # Verde
 COLOR_HP_MEDIA = (255, 215, 0) # Amarillo
 COLOR_HP_BAJA = (255, 60, 30)   # Rojo
+
+# --- COLORES PANEL TURNOS ---
+COLOR_PANEL_FONDO = (40, 40, 45)
+COLOR_PANEL_BORDE = (60, 60, 70)
+COLOR_SLOT_ACTIVO = (255, 215, 0, 30)  # Amarillo semitransparente
+COLOR_SLOT_NORMAL = (50, 50, 55)
 
 # --- ESTADOS DE CASILLA (PARA LA VISUALIZACIÓN) ---
 VACIA = 0
@@ -89,7 +100,7 @@ def actualizar_dimensiones_ventana(ancho, alto, escala=1.0, offset_x=0, offset_y
     Usado cuando se cambia de modo ventana a fullscreen y viceversa.
     """
     global ANCHO_VENTANA, ALTO_VENTANA, ESCALA_GLOBAL, OFFSET_X, OFFSET_Y, MODO_FULLSCREEN
-    global UI_ALTO, ANCHO_TABLERO, ALTO_TABLERO, TAMANO_CASILLA
+    global UI_ALTO, ANCHO_TABLERO, ALTO_TABLERO, TAMANO_CASILLA, ANCHO_PANEL_TURNOS
     
     ANCHO_VENTANA = ancho
     ALTO_VENTANA = alto
@@ -104,6 +115,7 @@ def actualizar_dimensiones_ventana(ancho, alto, escala=1.0, offset_x=0, offset_y
     # CRÍTICO: ANCHO_TABLERO debe ser exactamente el ancho de las casillas dibujadas
     ANCHO_TABLERO = TAMANO_CASILLA * COLUMNAS
     ALTO_TABLERO = TAMANO_CASILLA * FILAS
+    ANCHO_PANEL_TURNOS = int(ANCHO_PANEL_TURNOS_BASE * escala)
 
 def calcular_fullscreen():
     """
@@ -123,7 +135,7 @@ def calcular_fullscreen():
     alto_monitor = info.current_h
     
     # Restaurar ventana normal INMEDIATAMENTE
-    pygame.display.set_mode((ANCHO_BASE, ALTO_BASE))
+    pygame.display.set_mode((ANCHO_TOTAL_BASE, ALTO_BASE))
     
     # Margen mínimo (2.5% de cada lado = 95% de uso)
     margen_porcentaje = 0.025
@@ -131,7 +143,7 @@ def calcular_fullscreen():
     alto_util = alto_monitor * (1 - 2 * margen_porcentaje)
     
     # Calcular escala para usar el máximo espacio disponible
-    escala_x = ancho_util / ANCHO_BASE
+    escala_x = ancho_util / ANCHO_TOTAL_BASE
     escala_y = alto_util / ALTO_BASE
     escala = min(escala_x, escala_y)  # Usar la menor para que quepa todo
     
@@ -139,7 +151,7 @@ def calcular_fullscreen():
     escala = min(escala, 3.0)
     
     # Calcular tamaño escalado
-    ancho_escalado = int(ANCHO_BASE * escala)
+    ancho_escalado = int(ANCHO_TOTAL_BASE * escala)
     alto_escalado = int(ALTO_BASE * escala)
     
     # Calcular offsets para centrar

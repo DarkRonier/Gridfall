@@ -65,8 +65,7 @@ class MenuExpandible:
         if self.seccion_expandida == 'jugar':
             subopciones = [
                 {'texto': 'Nueva Partida Local', 'accion': 'nueva_partida', 'habilitado': True},
-                {'texto': 'vs IA', 'accion': 'vs_ia', 'habilitado': False, 'tooltip': 'Disponible en v0.4.x'},
-                {'texto': 'Cargar Partida', 'accion': 'cargar', 'habilitado': False, 'tooltip': 'Disponible en v0.3.x'}
+                {'texto': 'vs IA', 'accion': 'vs_ia', 'habilitado': True, 'tooltip': 'Modo contra IA'}
             ]
             
             alto_sub = int(50 * constants.ESCALA_GLOBAL)
@@ -371,7 +370,7 @@ def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
                         elif valor == 'nueva_partida':
                             return ('en_juego', pantalla, es_fullscreen)
                         elif valor == 'vs_ia':
-                            return ('en_juego_ia', pantalla, es_fullscreen)
+                            return ('en_juego_vs_ia', pantalla, es_fullscreen)
                         elif valor == 'cargar':
                             return ('cargar_partida', pantalla, es_fullscreen)
                     
