@@ -18,7 +18,7 @@ from game.game_setup import crear_nuevo_juego
 from game.turn_manager import TurnManager
 from game.turn_queue import TurnQueue
 from game.assets import cargar_svgs
-from game.audio import init_audio
+from game.audio import init_audio, get_audio
 from game.ai_rival import AIController
 
 # Importar estados del juego
@@ -148,6 +148,8 @@ def main():
     # Inicializar audio
     audio = init_audio()
     audio.play_game_start()
+    # Música inicial del menú principal (en bucle)
+    audio.set_music_mode('menu')
     
     # Crear fuentes escaladas
     tamanos = constants.obtener_tamanos_fuente()
@@ -182,6 +184,12 @@ def main():
     # --- LOOP PRINCIPAL ---
     while True:
         reloj_global.tick(60)
+        # Asegurar música de fondo según el estado "opuesto" principal
+        if estado_juego == 'menu_principal':
+            audio.set_music_mode('menu')
+        elif estado_juego == 'en_juego':
+            # Al entrar en juego debe reemplazar la anterior
+            audio.set_music_mode('battle')
         
         # ===== MENÚ PRINCIPAL =====
         if estado_juego == 'menu_principal':
@@ -215,6 +223,8 @@ def main():
                 }
 
                 estado_juego = 'en_juego'
+                # Forzar música de batalla al iniciar partida
+                audio.set_music_mode('battle')
                 continue
         
         # ===== EN JUEGO =====

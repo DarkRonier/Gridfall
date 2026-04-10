@@ -1,5 +1,6 @@
 import pygame
 from game import constants
+from game.audio import get_audio
 
 class MenuExpandible:
     """Clase para manejar un menú con secciones expandibles."""
@@ -28,6 +29,17 @@ class MenuExpandible:
         # Botones principales
         self.botones = {}
         self._crear_botones()
+
+        # Estado sliders de audio (15 niveles: 0..14)
+        audio = get_audio()
+        self.niveles_max = 14
+        # Volúmenes iniciales desde el audio manager (fall-back a 0.6)
+        vol_mus = getattr(audio, 'music_volume', 0.6) if audio else 0.6
+        vol_sfx = getattr(audio, 'master_volume', 0.7) if audio else 0.7
+        self.nivel_musica = int(round(vol_mus * self.niveles_max))
+        self.nivel_sfx = int(round(vol_sfx * self.niveles_max))
+        # Rects de sliders para detección de clicks/arrastres
+        self.slider_areas = {'musica': None, 'sfx': None}
     
     def _obtener_dimensiones_escaladas(self):
         """Retorna dimensiones escaladas según el modo actual."""
@@ -106,12 +118,12 @@ class MenuExpandible:
         
         # Si OPCIONES está expandido, agregar subopciones
         if self.seccion_expandida == 'opciones':
-            # Texto descriptivo según el estado actual (SOLO LECTURA)
+            # Texto descriptivo de fullscreen (solo lectura)
             texto_fullscreen = f"Pantalla Completa: {'SÍ' if self.fullscreen_activo else 'NO'}"
             
             subopciones = [
-                {'texto': 'Música', 'tipo': 'toggle', 'habilitado': False, 'tooltip': 'Disponible en v0.5.x'},
-                {'texto': 'Volumen', 'tipo': 'slider', 'habilitado': False, 'tooltip': 'Disponible en v0.5.x'},
+                {'texto': 'Música', 'tipo': 'slider', 'habilitado': True, 'clave': 'musica'},
+                {'texto': 'Volumen', 'tipo': 'slider', 'habilitado': True, 'clave': 'sfx'},
                 {'texto': texto_fullscreen, 'tipo': 'info', 'habilitado': False, 'tooltip': 'Reinicia el juego para cambiar'}
             ]
             
@@ -270,17 +282,47 @@ class MenuExpandible:
                     texto_rect = texto_sub.get_rect(midleft=(subopcion['rect'].x + 15 * constants.ESCALA_GLOBAL, subopcion['rect'].centery))
                     self.pantalla.blit(texto_sub, texto_rect)
                     
+                    # Si es slider, dibujar barra con 15 niveles
+                    if subopcion.get('tipo') == 'slider' and subopcion['habilitado']:
+                        # Área de la barra dentro del rect (dejamos margen para el texto)
+                        margen_izq = int(180 * constants.ESCALA_GLOBAL)
+                        margen_der = int(20 * constants.ESCALA_GLOBAL)
+                        alto_barra = int(14 * constants.ESCALA_GLOBAL)
+                        y_barra = int(subopcion['rect'].centery - alto_barra / 2)
+                        x_barra = int(subopcion['rect'].x + margen_izq)
+                        ancho_barra = int(subopcion['rect'].width - margen_izq - margen_der)
+                        barra_rect = pygame.Rect(x_barra, y_barra, ancho_barra, alto_barra)
+                        # Guardar área para interacción
+                        clave = subopcion.get('clave')
+                        if clave in ('musica', 'sfx'):
+                            self.slider_areas[clave] = barra_rect
+                        # Fondo de barra
+                        pygame.draw.rect(self.pantalla, (70, 70, 70), barra_rect, border_radius=6)
+                        # Calcular nivel actual
+                        nivel = self.nivel_musica if clave == 'musica' else self.nivel_sfx
+                        total = self.niveles_max
+                        # Dibujar segmentos llenos
+                        seg_gap = int(2 * constants.ESCALA_GLOBAL)
+                        seg_ancho = (ancho_barra - seg_gap * (total - 1)) / total
+                        for i in range(total + 1):
+                            pass  # ajustar total? queremos 15 niveles => indices 0..14 => total=14, segmentos=15? usamos total+1
+                        # Recalcular para 15 segmentos
+                        segmentos = self.niveles_max + 1
+                        seg_ancho = (ancho_barra - seg_gap * (segmentos - 1)) / segmentos
+                        for i in range(segmentos):
+                            x_seg = int(x_barra + i * (seg_ancho + seg_gap))
+                            rect_seg = pygame.Rect(x_seg, y_barra, int(seg_ancho), alto_barra)
+                            color_seg = (60, 120, 220) if i <= nivel else (50, 50, 50)
+                            pygame.draw.rect(self.pantalla, color_seg, rect_seg, border_radius=4)
+                        # Borde de la barra
+                        pygame.draw.rect(self.pantalla, (100, 100, 100), barra_rect, width=1, border_radius=6)
+                    
                     # Dibujar candado si está deshabilitado
                     if not subopcion['habilitado']:
                         self._dibujar_candado(subopcion['rect'].right - 30 * constants.ESCALA_GLOBAL, 
                                             subopcion['rect'].centery - 9 * constants.ESCALA_GLOBAL)
                     
-                    # Dibujar toggle si es de tipo toggle y está habilitado
-                    # NOTA: Ya no hay toggles habilitados para fullscreen
-                    if subopcion.get('tipo') == 'toggle' and subopcion['habilitado']:
-                        valor = subopcion.get('valor', False)
-                        self._dibujar_toggle(subopcion['rect'].right - 50 * constants.ESCALA_GLOBAL, 
-                                           subopcion['rect'].centery - 10 * constants.ESCALA_GLOBAL, valor)
+                    # Ya no hay toggles activos en opciones
     
     def manejar_click(self, pos_click):
         """
@@ -312,15 +354,42 @@ class MenuExpandible:
                             return None
                         
                         # Subopción habilitada
-                        if subopcion.get('tipo') == 'toggle':
-                            # Toggle el valor (pero ya no hay toggles activos)
-                            subopcion['valor'] = not subopcion.get('valor', False)
-                            # Ya no retorna toggle_fullscreen
-                        
-                        elif 'accion' in subopcion:
+                        if 'accion' in subopcion:
                             return ('accion', subopcion['accion'])
+                        # Slider: ajustar nivel según posición del click
+                        if subopcion.get('tipo') == 'slider':
+                            clave = subopcion.get('clave')
+                            if clave in ('musica', 'sfx'):
+                                barra = self.slider_areas.get(clave)
+                                if barra is not None:
+                                    self._ajustar_slider_por_pos(clave, pos_click[0], barra)
+                                    return None
         
         return None
+
+    def _ajustar_slider_por_pos(self, clave, x_click, barra_rect):
+        """Ajusta el nivel del slider (musica/sfx) según posición X del click."""
+        # Convertir posición en índice 0..14
+        segmentos = self.niveles_max + 1
+        seg_gap = int(2 * constants.ESCALA_GLOBAL)
+        seg_ancho = (barra_rect.width - seg_gap * (segmentos - 1)) / segmentos
+        # Clamp dentro de barra
+        x_rel = max(0, min(barra_rect.width - 1, x_click - barra_rect.x))
+        # Calcular índice por segmento
+        paso = seg_ancho + seg_gap
+        nivel = int(round(x_rel / paso))
+        nivel = max(0, min(self.niveles_max, nivel))
+        # Aplicar y notificar a AudioManager
+        if clave == 'musica':
+            self.nivel_musica = nivel
+            audio = get_audio()
+            if audio:
+                audio.set_music_volume(nivel / self.niveles_max)
+        elif clave == 'sfx':
+            self.nivel_sfx = nivel
+            audio = get_audio()
+            if audio:
+                audio.set_master_volume(nivel / self.niveles_max)
 
 
 def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
@@ -373,4 +442,13 @@ def mostrar_menu(pantalla_actual, fuente_grande, es_fullscreen=False):
                             return ('en_juego_vs_ia', pantalla, es_fullscreen)
                         elif valor == 'cargar':
                             return ('cargar_partida', pantalla, es_fullscreen)
+            
+            # Soporte de ajuste continuo mientras se arrastra el mouse con botón izquierdo
+            if evento.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0]:
+                # Intentar ajustar si el cursor está sobre algún slider
+                for clave in ('musica', 'sfx'):
+                    barra = menu.slider_areas.get(clave)
+                    if barra and barra.collidepoint(evento.pos):
+                        menu._ajustar_slider_por_pos(clave, evento.pos[0], barra)
+                        break
                     
