@@ -182,9 +182,9 @@ def dibujar_panel_turnos(pantalla, turn_queue, cache_imagenes, fuente_ui):
     espacio_disponible = panel_alto - margen_superior - 20  # 20 de margen inferior
     altura_slot = int(espacio_disponible / 5.75)
     espacio_superior = altura_slot * 0.75
-
-    # Dibujar cada slot de la cola
-    for i in range(5):
+    cantidad_a_mostrar = min(5, len(turn_queue.queue))
+   
+    for i in range(cantidad_a_mostrar):
         if i >= len(_animator.slots):
             break
             

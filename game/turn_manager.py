@@ -35,6 +35,9 @@ class TurnManager:
 
     def obtener_siguiente_pieza_activa(self):
         """Avanza el reloj hasta encontrar la siguiente pieza que debe actuar."""
+        if not self.piezas_en_juego:
+            return None
+
         while True:
             self.reloj += 1
             piezas_con_turno = []

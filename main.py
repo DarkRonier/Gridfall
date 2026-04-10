@@ -19,6 +19,7 @@ from game.turn_manager import TurnManager
 from game.turn_queue import TurnQueue
 from game.assets import cargar_svgs
 from game.audio import init_audio
+from game.ai_rival import AIController
 
 # Importar estados del juego
 from game.states import (
@@ -177,21 +178,30 @@ def main():
         'superficie_blur': None
     }
     
+    reloj_global = pygame.time.Clock()
     # --- LOOP PRINCIPAL ---
     while True:
+        reloj_global.tick(60)
         
         # ===== MENÚ PRINCIPAL =====
         if estado_juego == 'menu_principal':
             estado_juego, pantalla, es_fullscreen = mostrar_menu(pantalla, fuente_menu, es_fullscreen)
-            
+        
+            gamemode_ai = estado_juego in ('en_juego_vs_ia', 'en_juego_ia')
+
             # Si el usuario inicia un juego nuevo, inicializar todo
-            if estado_juego == 'en_juego':
+            if estado_juego == 'en_juego' or gamemode_ai:
                 tablero = crear_nuevo_juego()
                 turn_manager = TurnManager(tablero)
                 turn_queue = TurnQueue(turn_manager)
                 historial_turnos = []
                 numeros_flotantes = []
                 animaciones_muerte = []
+
+                # Configurar IA
+                ai_agent = None
+                if gamemode_ai:
+                    ai_agent = AIController(team_id=2)
                 
                 # Resetear datos del estado en_juego
                 datos_en_juego = {
@@ -200,8 +210,12 @@ def main():
                     'ataques_resaltados': [],
                     'ganador': None,
                     'animacion_en_curso': None,
-                    'superficie_blur': None
+                    'superficie_blur': None,
+                    'ai_agent': ai_agent
                 }
+
+                estado_juego = 'en_juego'
+                continue
         
         # ===== EN JUEGO =====
         elif estado_juego == 'en_juego':
@@ -215,7 +229,8 @@ def main():
                 animaciones_muerte,
                 CACHE_IMAGENES,
                 fuente_hp,
-                fuente_damage
+                fuente_damage,
+                datos_en_juego
             )
         
         # ===== CONFIRMACIÓN DE SALIR =====

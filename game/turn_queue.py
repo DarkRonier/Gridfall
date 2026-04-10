@@ -11,15 +11,22 @@ class TurnQueue:
             turn_manager: Instancia de TurnManager que proporciona las piezas
         """
         self.turn_manager = turn_manager
-        self.queue = []  # Cola de máximo 5 piezas
+        self.queue = []  # Cola de piezas activas
         self.max_size = 5
         
         # Llenar la cola inicial
         self._fill_queue()
     
+    def get_max_size(self):
+        """Devuelve el tamaño máximo dinámico de la cola.
+        Es el menor entre 5 y el número de piezas activas.
+        """
+        piezas_activas = [p for p in self.turn_manager.piezas_en_juego if p and p.esta_viva() and hasattr(p, 'posicion')]
+        return min(self.max_size, len(piezas_activas))
+
     def _fill_queue(self):
-        """Llena la cola hasta tener 5 piezas válidas."""
-        while len(self.queue) < self.max_size:
+        """Llena la cola hasta tener el número dinámico de piezas válidas."""
+        while len(self.queue) < self.get_max_size():
             # CRÍTICO: Limpiar piezas muertas o inválidas de la cola
             self.queue = [p for p in self.queue if p and p.esta_viva() and hasattr(p, 'posicion')]
             
@@ -48,7 +55,7 @@ class TurnQueue:
         self.queue = [p for p in self.queue if p and p.esta_viva() and hasattr(p, 'posicion')]
         
         # Rellenar si es necesario
-        if len(self.queue) < self.max_size:
+        if len(self.queue) < self.get_max_size():
             self._fill_queue()
         
         # Retornar primera pieza o None
@@ -83,7 +90,7 @@ class TurnQueue:
         self.queue = [p for p in self.queue if p and p.esta_viva() and hasattr(p, 'posicion')]
         
         # Rellenar si es necesario
-        if len(self.queue) < self.max_size:
+        if len(self.queue) < self.get_max_size():
             self._fill_queue()
         
         return list(self.queue)
