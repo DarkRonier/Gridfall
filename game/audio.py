@@ -1,5 +1,6 @@
 import pygame
 import os
+import sys
 
 class AudioManager:
     """Gestiona todos los efectos de sonido y música del juego."""
@@ -11,19 +12,29 @@ class AudioManager:
         
         # Volumen general (0.0 a 1.0) - DEBE IR ANTES de cargar sonidos
         self.master_volume = 0.7
+        self.music_volume = 0.6  # Volumen independiente para música de fondo
         
         # Diccionario para almacenar todos los sonidos
         self.sounds = {}
         
-        # Ruta base para los sonidos (relativa al directorio donde se ejecuta el script)
-        # Obtener la ruta absoluta del directorio del proyecto
-        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.sounds_path = os.path.join(script_dir, "assets", "sounds")
+        # Ruta base para los sonidos compatible con ejecutable PyInstaller
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.sounds_path = os.path.join(base_path, "assets", "sounds")
         
         print(f"Buscando sonidos en: {self.sounds_path}")
         
         # Cargar todos los sonidos
         self.load_sounds()
+
+        # Configuración de música de fondo (usando pygame.mixer.music)
+        self.music_files = {
+            'menu': os.path.join(self.sounds_path, 'Menu-song.ogg'),
+            'battle': os.path.join(self.sounds_path, 'Battle-song.ogg'),
+        }
+        self.current_music_mode = None  # 'menu' | 'battle' | None
         
     def load_sounds(self):
         """Carga todos los archivos de sonido desde la carpeta assets/sounds/"""
@@ -36,7 +47,7 @@ class AudioManager:
             'death': 'death-sound.mp3',
             'victory': 'victory.mp3',
             'game_start': 'game-start.mp3',
-            'main_menu': 'main menu.mp3',
+            # Nota: la música de fondo ahora se gestiona con pygame.mixer.music
         }
         
         # Intentar cargar cada sonido
@@ -125,18 +136,46 @@ class AudioManager:
         """Sonido al iniciar partida."""
         self.play('game_start', volume=0.7)
     
-    def play_menu_music(self, loop=True):
-        """Reproduce música del menú principal."""
-        if 'main_menu' in self.sounds and self.sounds['main_menu'] is not None:
-            if loop:
-                self.sounds['main_menu'].play(loops=-1)  # -1 = loop infinito
-            else:
-                self.sounds['main_menu'].play()
-    
-    def stop_menu_music(self):
-        """Detiene la música del menú."""
-        if 'main_menu' in self.sounds and self.sounds['main_menu'] is not None:
-            self.sounds['main_menu'].stop()
+    # ====== MÚSICA DE FONDO (NO INTERFIERE CON SFX) ======
+    def _load_and_play_music(self, filepath, loop=True, fade_ms=300):
+        """Carga y reproduce una pista de música en bucle usando mixer.music."""
+        try:
+            if not os.path.exists(filepath):
+                print(f"[Audio] Archivo de música no encontrado: {filepath}")
+                return
+            # Cortar la música previa si hay
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.fadeout(fade_ms)
+            pygame.mixer.music.load(filepath)
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play(-1 if loop else 0)
+        except Exception as e:
+            print(f"[Audio] Error al reproducir música {filepath}: {e}")
+
+    def set_music_mode(self, mode):
+        """
+        Asegura que esté sonando la música del modo indicado.
+        mode: 'menu' o 'battle'. No hace nada si ya está puesta.
+        """
+        if mode not in self.music_files:
+            print(f"[Audio] Modo de música desconocido: {mode}")
+            return
+        if self.current_music_mode == mode and pygame.mixer.music.get_busy():
+            return  # Ya está sonando la pista correcta
+        filepath = self.music_files[mode]
+        self._load_and_play_music(filepath, loop=True)
+        self.current_music_mode = mode
+
+    def stop_music(self, fade_ms=300):
+        """Detiene la música de fondo actual (con fadeout)."""
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.fadeout(fade_ms)
+        self.current_music_mode = None
+
+    def set_music_volume(self, volume):
+        """Ajusta solo el volumen de la música de fondo (0.0 - 1.0)."""
+        self.music_volume = max(0.0, min(1.0, volume))
+        pygame.mixer.music.set_volume(self.music_volume)
 
 
 # Instancia global del gestor de audio (se inicializará en main.py)

@@ -7,7 +7,7 @@ from .constants import FILAS, COLUMNAS
 def crear_nuevo_juego():
     """Crea y devuelve un tablero con todas las piezas iniciales."""
     tablero = [[None for _ in range(COLUMNAS)] for _ in range(FILAS)]
-    '''
+    
     soldados = ([0, 1, 3, 4, 6, 7])  # Posiciones de los soldados
     
     for i, pos in enumerate(soldados):
@@ -19,7 +19,7 @@ def crear_nuevo_juego():
             else:
                 soldado = crear_soldado(jugador=2)
                 soldado.posicion = (1, pos)
-                tablero[1][pos] = soldado'''
+                tablero[1][pos] = soldado
 
     paladins = ([2, 5])  # Posiciones de los paladines
     for i, pos in enumerate(paladins):
@@ -32,7 +32,7 @@ def crear_nuevo_juego():
                 paladin = crear_paladin(jugador=2)
                 paladin.posicion = (0, pos)
                 tablero[0][pos] = paladin
-    '''
+    
     magos = ([1, 6])  # Posiciones de los magos
     for i, pos in enumerate(magos):
         for j in range(2):
@@ -43,7 +43,7 @@ def crear_nuevo_juego():
             else:
                 mago = crear_mago(jugador=2)
                 mago.posicion = (0, pos)
-                tablero[0][pos] = mago'''
+                tablero[0][pos] = mago
 
     # Dragones
     for i in range(2):
