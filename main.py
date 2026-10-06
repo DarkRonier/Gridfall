@@ -18,6 +18,7 @@ from game.game_setup import crear_nuevo_juego
 from game.turn_manager import TurnManager
 from game.turn_queue import TurnQueue
 from game.assets import cargar_svgs
+from game.effects import get_fx
 from game.audio import init_audio, get_audio
 from game.ai_rival import AIController
 
@@ -205,6 +206,7 @@ def main():
                 historial_turnos = []
                 numeros_flotantes = []
                 animaciones_muerte = []
+                get_fx().clear()
 
                 # Configurar IA
                 ai_agent = None
