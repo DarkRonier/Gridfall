@@ -1,7 +1,8 @@
+import math
 import pygame
 from game import constants  # ← CAMBIO: Importar el módulo completo
-from .assets import crear_superficie_pieza
-from game.effects import MeleeAttackAnimation, ProjectileAnimation, MoveAnimation
+from .assets import crear_superficie_pieza, crear_sombra_suelo, crear_base_ficha
+from game.effects import MeleeAttackAnimation, ProjectileAnimation, MoveAnimation, Visual, get_fx
 from game.turn_queue_display import dibujar_panel_turnos
 
 def dibujar_tablero(pantalla):
@@ -14,68 +15,146 @@ def dibujar_tablero(pantalla):
             y = constants.OFFSET_Y + fila * constants.TAMANO_CASILLA + constants.UI_ALTO
             pygame.draw.rect(pantalla, color, (x, y, constants.TAMANO_CASILLA, constants.TAMANO_CASILLA))
 
+def _color_pieza(pieza, activa):
+    if activa:
+        return (80, 120, 255) if pieza.jugador == 1 else (255, 80, 80)  # COLOR_J1_VIBRANTE / COLOR_J2_VIBRANTE
+    return (60, 60, 180) if pieza.jugador == 1 else (180, 60, 60)  # COLOR_J1_OPACO / COLOR_J2_OPACO
+
+
+def _dibujar_barra_hp(pantalla, pieza, rect_imagen, fuente_hp):
+    """Barra de vida con borde y el número de HP encima."""
+    ancho_barra_total = rect_imagen.width
+    alto_barra = 8
+    pos_x_barra = rect_imagen.left
+    pos_y_barra = rect_imagen.bottom + 2
+
+    porcentaje_vida = max(0.0, pieza.hp / pieza.hp_max)
+    ancho_vida_actual = ancho_barra_total * porcentaje_vida
+
+    if porcentaje_vida > 0.6:
+        color_vida = (40, 170, 90)  # COLOR_HP_ALTA
+    elif porcentaje_vida > 0.3:
+        color_vida = (255, 215, 0)  # COLOR_HP_MEDIA
+    else:
+        color_vida = (255, 60, 30)  # COLOR_HP_BAJA
+
+    pygame.draw.rect(pantalla, (20, 24, 20), (pos_x_barra - 1, pos_y_barra - 1, ancho_barra_total + 2, alto_barra + 2), border_radius=3)
+    pygame.draw.rect(pantalla, (70, 80, 70), (pos_x_barra, pos_y_barra, ancho_barra_total, alto_barra), border_radius=2)  # COLOR_HP_FONDO
+    if ancho_vida_actual > 0:
+        pygame.draw.rect(pantalla, color_vida, (pos_x_barra, pos_y_barra, ancho_vida_actual, alto_barra), border_radius=2)
+        # brillo superior de la barra
+        pygame.draw.rect(pantalla, tuple(min(255, c + 70) for c in color_vida),
+                         (pos_x_barra, pos_y_barra, ancho_vida_actual, max(1, alto_barra // 3)), border_radius=2)
+
+    texto_hp = fuente_hp.render(str(pieza.hp), True, (255, 255, 255))
+    texto_hp_sombra = fuente_hp.render(str(pieza.hp), True, (0, 0, 0))
+    rect_texto_hp = texto_hp.get_rect(center=(pos_x_barra + ancho_barra_total / 2, pos_y_barra + alto_barra / 2))
+    for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        pantalla.blit(texto_hp_sombra, (rect_texto_hp.left + dx, rect_texto_hp.top + dy))
+    pantalla.blit(texto_hp, rect_texto_hp)
+
+
+def _dibujar_pieza(pantalla, pieza, centro, es_activa, cache_imagenes, fuente_hp, visual=None):
+    """
+    Dibuja una pieza completa: sombra, peana del equipo, sprite (con deformación/salto/golpe) y barra de vida.
+    `centro` es el centro de la casilla; `visual` describe la animación en curso (si la hay).
+    """
+    lado = int(constants.TAMANO_CASILLA * 0.7)
+    escala = constants.TAMANO_CASILLA / 90.0
+    fx = get_fx()
+    ahora = pygame.time.get_ticks()
+
+    if visual is None:
+        visual = Visual(centro)
+    cx, cy = visual.pos.x, visual.pos.y
+
+    color = _color_pieza(pieza, es_activa)
+    imagen = crear_superficie_pieza(pieza.nombre, color, (lado, lado), cache_imagenes)
+
+    # Respiración suave de la pieza activa (solo si no está animada)
+    reposo = 0.0
+    if es_activa and visual.elevacion == 0 and visual.sx == 1.0 and visual.sy == 1.0:
+        reposo = (math.sin(ahora / 230.0) + 1) * 0.5      # 0..1
+    elevacion = visual.elevacion + reposo * 2.5 * escala
+
+    # --- Sombra y peana en el suelo ---
+    suelo_y = cy + lado * 0.38
+    factor_sombra = max(0.55, 1 - visual.elevacion / (28 * escala))
+    ancho_sombra = int(lado * 0.95 * factor_sombra * (visual.sx if visual.sx > 0 else 1))
+    alto_sombra = max(4, int(lado * 0.30 * factor_sombra))
+    sombra = crear_sombra_suelo(ancho_sombra, alto_sombra, cache_imagenes)
+    pantalla.blit(sombra, sombra.get_rect(center=(int(cx), int(suelo_y + 2 * escala))))
+
+    ancho_base = int(lado * 0.82)
+    alto_base = max(6, int(lado * 0.24))
+    base = crear_base_ficha(ancho_base, alto_base, color, es_activa, cache_imagenes)
+    if es_activa:
+        # halo pulsante del equipo alrededor de la pieza activa
+        halo = pygame.Surface((ancho_base + 24, alto_base + 20), pygame.SRCALPHA)
+        pygame.draw.ellipse(halo, (*color, int(50 + 70 * (math.sin(ahora / 230.0) + 1) / 2)),
+                            halo.get_rect())
+        pantalla.blit(halo, halo.get_rect(center=(int(cx), int(suelo_y + 2))))
+    pantalla.blit(base, base.get_rect(center=(int(cx), int(suelo_y))))
+
+    # --- Sprite ---
+    img = imagen
+    if abs(visual.sx - 1) > 0.01 or abs(visual.sy - 1) > 0.01:
+        img = pygame.transform.smoothscale(imagen, (max(1, int(lado * visual.sx)), max(1, int(lado * visual.sy))))
+    brillo = max(visual.brillo, fx.destello(pieza))
+    if brillo > 0.02:
+        img = img.copy()
+        v = int(255 * min(1.0, brillo))
+        img.fill((v, v, v), special_flags=pygame.BLEND_RGB_ADD)
+
+    dx, dy = fx.desplazamiento_golpe(pieza)
+    rect_imagen = img.get_rect(midbottom=(int(cx + dx), int(cy + lado / 2 - elevacion + dy)))
+    pantalla.blit(img, rect_imagen)
+
+    # --- Barra de vida (anclada a la casilla, no al salto) ---
+    rect_barra = pygame.Rect(0, 0, lado, lado)
+    rect_barra.center = (int(cx), int(cy))
+    _dibujar_barra_hp(pantalla, pieza, rect_barra, fuente_hp)
+
+
 def dibujar_piezas(pantalla, tablero, pieza_activa, cache_imagenes, fuente_hp, animacion_activa=None):
-    """Dibuja las piezas sobre el tablero."""
-    tamano_pieza = (int(constants.TAMANO_CASILLA * 0.7), int(constants.TAMANO_CASILLA * 0.7))
+    """Dibuja las piezas sobre el tablero. La pieza animada se dibuja al final (encima del resto)."""
+    entidad_animada = getattr(animacion_activa, "entidad", None)
 
     for fila in range(constants.FILAS):
         for col in range(constants.COLUMNAS):
             pieza = tablero[fila][col]
-            if pieza is not None:
-                if animacion_activa and isinstance(animacion_activa, (MoveAnimation, MeleeAttackAnimation)):
-                    if pieza is animacion_activa.entidad:
-                        continue
+            if pieza is None or pieza is entidad_animada:
+                continue
+            centro = (constants.OFFSET_X + col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
+                      constants.OFFSET_Y + fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
+            _dibujar_pieza(pantalla, pieza, centro, pieza is pieza_activa, cache_imagenes, fuente_hp)
 
-                if pieza is pieza_activa:
-                    color = (80, 120, 255) if pieza.jugador == 1 else (255, 80, 80)  # COLOR_J1_VIBRANTE / COLOR_J2_VIBRANTE
-                else:
-                    color = (60, 60, 180) if pieza.jugador == 1 else (180, 60, 60)  # COLOR_J1_OPACO / COLOR_J2_OPACO
+    if entidad_animada is not None and entidad_animada.esta_viva():
+        _dibujar_pieza(pantalla, entidad_animada, animacion_activa.get_visual().pos,
+                       entidad_animada is pieza_activa, cache_imagenes, fuente_hp,
+                       animacion_activa.get_visual())
 
-                # Obtenemos la imagen de la pieza (desde el caché o la creamos)
-                imagen_pieza = crear_superficie_pieza(pieza.nombre, color, tamano_pieza, cache_imagenes)
-                
-                # Calcular la posición para centrar la imagen en la casilla (CON OFFSETS)
-                centro_x = int(constants.OFFSET_X + col * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2)
-                centro_y = int(constants.OFFSET_Y + fila * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
-                rect_imagen = imagen_pieza.get_rect(center=(centro_x, centro_y))
 
-                # Dibujar la imagen de la pieza.
-                pantalla.blit(imagen_pieza, rect_imagen)
+def dibujar_muertes(pantalla, animaciones_muerte, cache_imagenes):
+    """Dibuja las piezas que se están desintegrando tras ser derrotadas."""
+    lado = int(constants.TAMANO_CASILLA * 0.7)
+    for animacion in animaciones_muerte:
+        pieza = animacion.entidad
+        imagen = crear_superficie_pieza(pieza.nombre, _color_pieza(pieza, False), (lado, lado), cache_imagenes)
+        tam = max(1, int(lado * animacion.escala))
+        img = pygame.transform.smoothscale(imagen, (tam, tam)) if tam != lado else imagen.copy()
+        if animacion.brillo > 0.02:
+            v = int(255 * animacion.brillo)
+            img.fill((v, v, v), special_flags=pygame.BLEND_RGB_ADD)
+        img.set_alpha(animacion.get_alpha())
+        cx = constants.OFFSET_X + pieza.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2
+        cy = constants.OFFSET_Y + pieza.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2
+        pantalla.blit(img, img.get_rect(center=(int(cx), int(cy - animacion.elevacion))))
 
-                # 6. Dibujar la barra de vida debajo de la pieza.
-                # Posición y tamaño de la barra de vida
-                ancho_barra_total = tamano_pieza[0]
-                alto_barra = 8
-                pos_x_barra = rect_imagen.left
-                pos_y_barra = rect_imagen.bottom + 2
 
-                # Calcular el porcentaje de vida
-                porcentaje_vida = pieza.hp / pieza.hp_max
-                ancho_vida_actual = ancho_barra_total * porcentaje_vida
-
-                # Seleccionar el color de la barra según el porcentaje
-                if porcentaje_vida > 0.6:
-                    color_vida = (40, 170, 90)  # COLOR_HP_ALTA
-                elif porcentaje_vida > 0.3:
-                    color_vida = (255, 215, 0)  # COLOR_HP_MEDIA
-                else:
-                    color_vida = (255, 60, 30)  # COLOR_HP_BAJA
-
-                pygame.draw.rect(pantalla, (70, 80, 70), (pos_x_barra, pos_y_barra, ancho_barra_total, alto_barra))  # COLOR_HP_FONDO
-                if ancho_vida_actual > 0:
-                    pygame.draw.rect(pantalla, color_vida, (pos_x_barra, pos_y_barra, ancho_vida_actual, alto_barra))
-                
-                # 7. Dibujar el número de vida actual sobre la barra.
-                texto_hp = fuente_hp.render(str(pieza.hp), True, (255, 255, 255))
-                texto_hp_sombra = fuente_hp.render(str(pieza.hp), True, (0, 0, 0))
-                rect_texto_hp = texto_hp.get_rect(center=(pos_x_barra + ancho_barra_total / 2, pos_y_barra + alto_barra / 2))
-
-                pantalla.blit(texto_hp_sombra, (rect_texto_hp.left - 1, rect_texto_hp.top - 1))
-                pantalla.blit(texto_hp_sombra, (rect_texto_hp.left + 1, rect_texto_hp.top - 1))
-                pantalla.blit(texto_hp_sombra, (rect_texto_hp.left - 1, rect_texto_hp.top + 1))
-                pantalla.blit(texto_hp_sombra, (rect_texto_hp.left + 1, rect_texto_hp.top + 1))
-
-                pantalla.blit(texto_hp, rect_texto_hp)
+def dibujar_efectos(pantalla):
+    """Partículas y ondas expansivas (golpes, polvo, chispas)."""
+    get_fx().draw(pantalla)
 
 def dibujar_resaltados(pantalla, casillas_movimiento, casillas_ataque, pieza_activa):
     if pieza_activa:
@@ -147,16 +226,8 @@ def dibujar_numeros_flotantes(pantalla, numeros):
         numero.draw(pantalla)
 
 def dibujar_animacion_activa(pantalla, animacion, cache_imagenes):
-    """Dibuja la pieza que está en medio de una animación de movimiento."""
-    if isinstance(animacion, (MoveAnimation, MeleeAttackAnimation)):
-        entidad = animacion.entidad
-        color = (80, 120, 255) if entidad.jugador == 1 else (255, 80, 80)  # COLOR_J1_VIBRANTE / COLOR_J2_VIBRANTE
-        tamano_pieza = (int(constants.TAMANO_CASILLA * 0.7), int(constants.TAMANO_CASILLA * 0.7))
-        imagen_pieza = crear_superficie_pieza(entidad.nombre, color, tamano_pieza, cache_imagenes)
-        pos_actual = animacion.get_pos()
-        rect_imagen = imagen_pieza.get_rect(center=pos_actual)
-        pantalla.blit(imagen_pieza, rect_imagen)
-    elif isinstance(animacion, ProjectileAnimation):
+    """Dibuja los elementos propios de la animación (la pieza animada ya se dibuja en dibujar_piezas)."""
+    if isinstance(animacion, ProjectileAnimation):
         animacion.draw(pantalla)
 
 def dibujar_pantalla_confirmacion(pantalla, fondo_blur, fuente_menu, fuente_ui):

@@ -9,11 +9,11 @@ import random
 from game import constants
 from game.drawing import (dibujar_tablero, dibujar_piezas, dibujar_resaltados, dibujar_ui,
                           dibujar_numeros_flotantes, dibujar_animacion_activa, dibujar_proyectiles,
-                          dibujar_borde_turno, obtener_boton_volver, obtener_boton_deshacer, obtener_boton_pasar)
+                          dibujar_borde_turno, dibujar_muertes, dibujar_efectos, obtener_boton_volver, obtener_boton_deshacer, obtener_boton_pasar)
 from game.turn_queue_display import dibujar_panel_turnos, get_animator
 from game.logic import calcular_casillas_posibles, calcular_ataques_posibles, verificar_ganador
 from game.effects import (DamageText, MoveAnimation, MeleeAttackAnimation,
-                          FadeOutAnimation, ProjectileAnimation)
+                          FadeOutAnimation, ProjectileAnimation, get_fx)
 from game.audio import get_audio
 
 
@@ -130,6 +130,8 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
             if animacion.update():
                 animaciones_muerte.remove(animacion)
         
+        get_fx().update()
+
         for numero in numeros_flotantes:
             numero.update()
         numeros_flotantes[:] = [n for n in numeros_flotantes if n.lifetime > 0]
@@ -210,7 +212,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                     end_px = (constants.OFFSET_X + dest_c * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                              constants.OFFSET_Y + dest_f * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                     
-                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
+                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 20)
                     audio.play_move()
                     
                     tablero[vieja_fila][vieja_col] = None
@@ -255,10 +257,10 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                                 constants.OFFSET_Y + obj_f * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                     
                     if pieza_activa.tipo_ataque == 'melee':
-                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
+                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback, objetivo=pieza_atacada)
                         audio.play_melee_attack()
                     else:
-                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
+                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback, objetivo=pieza_atacada)
                         audio.play_ranged_cast()
 
         # --- Manejo de Eventos ---
@@ -340,6 +342,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                         animacion_en_curso = None
                         numeros_flotantes.clear()
                         animaciones_muerte.clear()
+                        get_fx().clear()
                         movimientos_resaltados.clear()
                         ataques_resaltados.clear()
                     else:
@@ -400,10 +403,10 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                                                 constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     
                                     if pieza_activa.tipo_ataque == 'melee':
-                                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback)
+                                        animacion_en_curso = MeleeAttackAnimation(pieza_activa, start_px, target_px, 30, aplicar_dano_callback, objetivo=pieza_atacada)
                                         audio.play_melee_attack()
                                     elif pieza_activa.tipo_ataque == 'ranged':
-                                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback)
+                                        animacion_en_curso = ProjectileAnimation(pieza_activa, start_px, target_px, 40, aplicar_dano_callback, objetivo=pieza_atacada)
                                         audio.play_ranged_cast()
                             
                             elif (fila_clic, col_clic) in movimientos_resaltados:
@@ -416,7 +419,7 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
                                     end_px = (constants.OFFSET_X + col_clic * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2,
                                              constants.OFFSET_Y + fila_clic * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
                                     
-                                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 10)
+                                    animacion_en_curso = MoveAnimation(pieza_activa, start_px, end_px, 20)
                                     audio.play_move()
                                     
                                     tablero[vieja_fila][vieja_col] = None
@@ -443,20 +446,8 @@ def manejar_estado_en_juego(pantalla, tablero, turn_manager, turn_queue, histori
         if animacion_en_curso:
             dibujar_animacion_activa(pantalla, animacion_en_curso, CACHE_IMAGENES)
         
-        for animacion in animaciones_muerte:
-            pieza = animacion.entidad
-            alpha = animacion.get_alpha()
-            
-            from game.assets import crear_superficie_pieza
-            color = (60, 60, 180) if pieza.jugador == 1 else (180, 60, 60)  # COLOR_J1_OPACO / COLOR_J2_OPACO
-            imagen_original = crear_superficie_pieza(pieza.nombre, color, (int(constants.TAMANO_CASILLA*0.7), int(constants.TAMANO_CASILLA*0.7)), CACHE_IMAGENES)
-            
-            imagen_draw = imagen_original.copy()
-            imagen_draw.set_alpha(alpha)
-            centro_x = int(constants.OFFSET_X + pieza.posicion[1] * constants.TAMANO_CASILLA + constants.TAMANO_CASILLA / 2)
-            centro_y = int(constants.OFFSET_Y + pieza.posicion[0] * constants.TAMANO_CASILLA + constants.UI_ALTO + constants.TAMANO_CASILLA / 2)
-            rect_imagen = imagen_draw.get_rect(center=(centro_x, centro_y))
-            pantalla.blit(imagen_draw, rect_imagen)
+        dibujar_muertes(pantalla, animaciones_muerte, CACHE_IMAGENES)
+        dibujar_efectos(pantalla)
         
         dibujar_numeros_flotantes(pantalla, numeros_flotantes)
         dibujar_ui(pantalla, pygame.font.SysFont("Arial", 20), pieza_activa)
